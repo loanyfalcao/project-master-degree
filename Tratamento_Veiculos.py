@@ -79,10 +79,6 @@ def veiculos_placas(df):
                     novo_ano = f'Ano {coluna.split(" ")[-1]}'
                     df[novo_ano] = df[coluna].str.extract(r'/(\d+)[)]')
 
-    for i in range(veiculos.shape[1]):
-        df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace('', np.nan)
-        df[f'Placa {i + 1}'] = df[f'Placa {i + 1}'].replace('', np.nan)
-        df[f'Ano {i + 1}'] = df[f'Ano {i + 1}'].replace('', np.nan)
     return df
 
 def aquivo_placas(df, placas):
@@ -143,6 +139,13 @@ def contar_evasao(df):
 
     return df
 
+def retirar_vazios (df):
+    for i in range(len(df.filter(regex='^Veiculo ').columns.tolist())):
+        df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace('', np.nan)
+        df[f'Placa {i + 1}'] = df[f'Placa {i + 1}'].replace('', np.nan)
+        df[f'Ano {i + 1}'] = df[f'Ano {i + 1}'].replace('', np.nan)
+
+    return df
 
 def contar_com_info(df):
 
