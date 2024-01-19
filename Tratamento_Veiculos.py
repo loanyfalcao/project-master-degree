@@ -78,7 +78,7 @@ def veiculos_placas(df):
                     # Criando o nome da nova coluna
                     novo_ano = f'Ano {coluna.split(" ")[-1]}'
                     df[novo_ano] = df[coluna].str.extract(r'/(\d+)[)]')
-
+                    df[novo_ano] = df[novo_ano].replace(0.0,'')
     return df
 
 def aquivo_placas(df, placas):
@@ -141,34 +141,31 @@ def contar_evasao(df):
 
 def retirar_vazios (df):
     for i in range(len(df.filter(regex='^Veiculo ').columns.tolist())):
-        df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace(np.nan,'')
-        df[f'Placa {i + 1}'] = df[f'Placa {i + 1}'].replace(np.nan,'')
-        df[f'Ano {i + 1}'] = df[f'Ano {i + 1}'].replace(np.nan,'')
+        df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace('',np.nan)
+        df[f'Placa {i + 1}'] = df[f'Placa {i + 1}'].replace('',np.nan)
+        df[f'Ano {i + 1}'] = df[f'Ano {i + 1}'].replace('',np.nan)
 
     return df
 
-def contar_com_info(df):
+def um_veiculo_com_info(df):
 
-    #palavra = 'evadi'
     numero_colunas = len(df.filter(regex='^Veiculo ').columns.tolist())
     df_concat = pd.DataFrame()
     for i in range(0, numero_colunas):
-        df_auxiliar = df[['OcDataConcessionaria', f'Ano {i + 1}', f'Placa {i+1}']]
-        df_auxiliar = df_auxiliar.loc[(df_auxiliar[f'Ano {i + 1}'] != np.nan) | (df_auxiliar[f'Placa {i+1}'] != np.nan)]
+        df_auxiliar = df[['OcDataConcessionaria', f'Ano {i + 1}', f'Placa {i + 1}']]
 
-        df_evasao_v1 = df_evasao[df_evasao[f'Veiculo {i + 1}'].str.contains(palavra, case=False)]
-        df_evasao_v1['Evasao'] = True
+        df_auxiliar = df_auxiliar.loc[pd.notna(df_auxiliar[f'Ano {i + 1}']) | pd.notna(df_auxiliar[f'Placa {i+1}'])]
+        df_auxiliar['Possui info'] = True
 
-        df_evasao_v1 = df_evasao_v1.drop(columns=[f'Veiculo {i + 1}'])
-        df_concat = pd.concat([df_concat, df_evasao_v1], ignore_index=True)
+        df_auxiliar = df_auxiliar.drop(columns=[f'Ano {i + 1}',f'Placa {i + 1}'])
+        df_concat = pd.concat([df_concat, df_auxiliar], ignore_index=True)
 
     df = pd.merge(df, df_concat, on='OcDataConcessionaria', how='left')
-    df['Evasao'] = df['Evasao'].fillna(False)
+    df['Possui info'] = df['Possui info'].fillna(False)
 
-    df['NumVeiculosEvadidos'] = df.groupby('OcDataConcessionaria')['OcDataConcessionaria'].transform('count')
-    df['NumVeiculos_NaoEvadidos'] = np.where(df['Evasao'] == True, df['Numveic'] - df['NumVeiculosEvadidos'], df['Numveic'])
+    df['NumVeiculosComInfo'] = df.groupby('OcDataConcessionaria')['OcDataConcessionaria'].transform('count')
+    df.drop(columns='Possui info')
     df = df.drop_duplicates(subset='OcDataConcessionaria')
-
 
     return df
 
