@@ -63,25 +63,26 @@ def classificar_tipo_veiculo(df):
 def veiculos_placas(df):
 
     df = df[['Ano', 'OcDataConcessionaria', 'Numveic', 'Veiculos']]
+
     veiculos = df['Veiculos'].str.split(';', expand=True)
-    for i in range(veiculos.shape[1]):
-        veiculos.columns = f'Veiculo {i + 1}'
-        veiculos[f'Veiculo {i + 1}'] = veiculos[f'Veiculo {i + 1}'].replace('', np.nan)
-        df = pd.concat([df, veiculos], axis=1)
+    veiculos.columns = [f'Veiculo {i + 1}' for i in range(veiculos.shape[1])]
+    df = pd.concat([df, veiculos], axis=1)
 
     # Separando placas
     for coluna in df.columns:
         if coluna.startswith('Veiculo '):
             nova_coluna = f'Placa {coluna.split(" ")[-1]}'
             df[nova_coluna] = df[coluna].str.extract(r':(.*?)-')
-            df[nova_coluna] = df[nova_coluna].replace('', np.nan)
             for coluna in df.columns:
                 if coluna.startswith('Veiculo '):
                     # Criando o nome da nova coluna
                     novo_ano = f'Ano {coluna.split(" ")[-1]}'
                     df[novo_ano] = df[coluna].str.extract(r'/(\d+)[)]')
-                    df[novo_ano] = df[novo_ano].replace('', np.nan)
 
+    for i in range(veiculos.shape[1]):
+        df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace('', np.nan)
+        df[f'Placa {i + 1}'] = df[f'Placa {i + 1}'].replace('', np.nan)
+        df[f'Ano {i + 1}'] = df[f'Ano {i + 1}'].replace('', np.nan)
     return df
 
 def aquivo_placas(df, placas):
