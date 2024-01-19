@@ -141,9 +141,9 @@ def contar_evasao(df):
 
 def retirar_vazios (df):
     for i in range(len(df.filter(regex='^Veiculo ').columns.tolist())):
-        df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace('', np.nan)
-        df[f'Placa {i + 1}'] = df[f'Placa {i + 1}'].replace('', np.nan)
-        df[f'Ano {i + 1}'] = df[f'Ano {i + 1}'].replace('', np.nan)
+        df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace(np.nan,'')
+        df[f'Placa {i + 1}'] = df[f'Placa {i + 1}'].replace(np.nan,'')
+        df[f'Ano {i + 1}'] = df[f'Ano {i + 1}'].replace(np.nan,'')
 
     return df
 
