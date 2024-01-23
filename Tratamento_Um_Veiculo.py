@@ -11,18 +11,18 @@ def um_veic(df):
     df['Veiculos'] = df['Veiculos'].str.strip()
     df = df.query('Veiculos != ""')
 
-    df['Ano Veiculo'] = df['Veiculos'].str.extract(r'/(\d+)[)]')
-    df['Ano Veiculo'] = pd.to_numeric(df['Ano Veiculo'], errors='coerce').fillna(-1).astype(int)
+    df['Ano_Veiculo'] = df['Veiculos'].str.extract(r'/(\d+)[)]')
+    df['Ano_Veiculo'] = pd.to_numeric(df['Ano_Veiculo'], errors='coerce').fillna(-1).astype(int)
 
-    df['Ano Veiculo'] = df['Ano Veiculo'].replace([0, -1], np.nan)
+    df['Ano_Veiculo'] = df['Ano_Veiculo'].replace([0, -1], np.nan)
 
-    df['Ano Veiculo'] = (df['Ano Veiculo'].mask((df['Ano Veiculo'] >= 10) & (df['Ano Veiculo'] < 23), df['Ano Veiculo'] + 2000))
+    df['Ano_Veiculo'] = (df['Ano_Veiculo'].mask((df['Ano_Veiculo'] >= 10) & (df['Ano_Veiculo'] < 23), df['Ano_Veiculo'] + 2000))
 
-    df['Ano Veiculo'] = (df['Ano Veiculo'].mask((df['Ano Veiculo'] > 50) & (df['Ano Veiculo'] <= 99), df['Ano Veiculo'] + 1900))
+    df['Ano_Veiculo'] = (df['Ano_Veiculo'].mask((df['Ano_Veiculo'] > 50) & (df['Ano_Veiculo'] <= 99), df['Ano_Veiculo'] + 1900))
 
-    df['Ano Veiculo'] = (df['Ano Veiculo'].mask((df['Ano Veiculo'] >= 200) & (df['Ano Veiculo'] < 223), (df['Ano Veiculo'] - 200) + 2000))
+    df['Ano_Veiculo'] = (df['Ano_Veiculo'].mask((df['Ano_Veiculo'] >= 200) & (df['Ano_Veiculo'] < 223), (df['Ano_Veiculo'] - 200) + 2000))
 
-    df['Ano Veiculo'] = (df['Ano Veiculo'].mask((df['Ano Veiculo'] > 2023) | (df['Ano Veiculo'] < 1950), np.nan))
+    df['Ano_Veiculo'] = (df['Ano_Veiculo'].mask((df['Ano_Veiculo'] > 2023) | (df['Ano_Veiculo'] < 1950), np.nan))
 
     df['Placa'] = df['Veiculos'].str.extract(r':(.*?)-')
     df['Placa'].replace('', np.nan, inplace=True)
@@ -31,7 +31,7 @@ def um_veic(df):
     df['Placa'].replace(['', '0000000'], np.nan, inplace=True)
     df.drop('Contagem_Caracteres', axis=1, inplace=True)
 
-    df = df.loc[(df['Ano Veiculo'].notna()) | (df['Placa'].notna())]
+    df = df.loc[(df['Ano_Veiculo'].notna()) | (df['Placa'].notna())]
 
     df['Contagem'] = df.groupby('OcDataConcessionaria')['OcDataConcessionaria'].transform('count')
 
@@ -43,8 +43,8 @@ def classificar_tipo_veiculo(df):
 
 
     df['Tipo_Veiculo'] = df['Veiculos'].str.extract(r'^(.*?)(?=\()')
-    df['Marca'] = df['Veiculos'].str.extract(r'\((.*?)\/')
-    df['Modelo'] = df['Veiculos'].str.extract(r'/(.*?):')
+    df['Marca_Veiculo'] = df['Veiculos'].str.extract(r'\((.*?)\/')
+    df['Modelo_Veiculo'] = df['Veiculos'].str.extract(r'/(.*?):')
 
     df['Tipo_Veiculo'] = (df['Tipo_Veiculo'].replace(['AUTomovel', 'Perua/Caminhonete/Camioneta'],'Veiculo Leve').
                            replace(['MOTocicleta', 'MOTo Frete'],'Motocicleta').
@@ -58,34 +58,24 @@ def classificar_tipo_veiculo(df):
 
 
 def aquivo_placas(df, placas):
-    df_placas = df[['Ano', 'OcDataConcessionaria', 'NumVeic', 'Veiculos']]
 
-    df_placas = df_placas.assign(Veiculos=df_placas['Veiculos'].str.split(';')).explode('Veiculos')
-    df_placas['Veiculos'] = df_placas['Veiculos'].str.strip()
-    df_acidentes_placas['Contagem_Caracteres'] = df_placas['Veiculos'].str.len()
-    df_placas = df_placas.loc[(df_placas['Contagem_Caracteres'] != 0)]
-    df_placas = df_placas.drop('Contagem_Caracteres', axis=1)
+    df = pd.merge(df, placas, on='Placa', how='left')
+    df['Ano_Veiculo'] = df.apply(lambda row: row['Ano'] if (pd.notna(row['Ano']) and row['Ano'] != '') else row['Ano_Veiculo'], axis=1)
+    df['Ano_Veiculo'] = pd.to_numeric(df['Ano_Veiculo'], errors='coerce').fillna(-1).astype(int)
+    df['Ano_Veiculo'] = df['Ano_Veiculo'].replace(-1, np.nan)
 
-    df_placas['Ano Placa'] = df_placas['Veiculos'].str.extract(r'/(\d+)[)]')
-    df_placas['Ano Placa'] = pd.to_numeric(df_placas['Ano Placa'], errors='coerce').fillna(-1).astype(int)
-    df_placas['Ano Placa'] = np.where((df_placas['Ano Placa'] > 1950) & (df_placas['Ano Placa'] <= 2022),
-                                      df_placas['Ano Placa'], '')
-    df_placas['Ano Placa'] = pd.to_numeric(df_placas['Ano Placa'], errors='coerce').fillna(-1).astype(int)
-    df_placas['Placa'] = df_placas['Veiculos'].str.extract(r':(.*?)-')
+    df['Modelo_Veiculo'] = df.apply(lambda row: row['Modelo'] if (pd.notna(row['Modelo']) and row['Modelo'] != '') else row['Modelo_Veiculo'], axis=1)
 
-    # Contagem de quantos veiculos no acidente
-    df_placas['Contagem'] = df_placas.groupby('OcDataConcessionaria')['OcDataConcessionaria'].transform('count')
+    df = df.drop(columns=['Ano', 'Modelo'], axis=1)
 
-    # Unindo a planilha de placas da API com a planilha original
-    df_placas = pd.merge(df_placas, placas, on='Placa', how='left')
-    df_placas['Ano Placa'] = df_placas.apply(
-        lambda row: row['Ano_y'] if pd.notna(row['Ano_y']) and row['Ano_y'] != '' else row['Ano Placa'], axis=1)
-    df_placas = df_placas.drop('Ano_y', axis=1)
-    return df_placas
+    return df
 
 
 
 if(__name__ == "__main__"):
+
+    placas = pd.read_csv('')
+
     df = classificar_tipo_veiculo(df)
 
 
