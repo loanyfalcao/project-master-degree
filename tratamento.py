@@ -156,7 +156,7 @@ def alterar_acidente_bicicleta (df):
     tipoac['TipoAcidente'] = tipoac['TipoAcidente'].replace(['Colisão Traseira','Colisão Transversal','Colisão Lateral','Engavetamento''Colisão Frontal'],
                                                             'Atropelamento - Ciclista', regex=True)
 
-    tipoac= tipoac.loc [(tipoac['TipoAcidente'] == 'Atropelamento - Ciclista')]
+    tipoac= tipoac.loc[(tipoac['TipoAcidente'] == 'Atropelamento - Ciclista')]
     tipoac['Analise'] = 1
     tipoac.drop(columns=['TipoAcidente', 'Veiculos'],axis=1, inplace=True)
 
