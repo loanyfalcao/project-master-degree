@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
-import tratamento
 
+def veiculo_por_linha(df):
 
-def um_veic(df):
+    df = df[['OcDataConcessionaria', 'Ano', 'Veiculos']]
 
-    df = df[['OcDataConcessionaria', 'Veiculos']]
+    df.rename(columns={'Ano': 'Ano_Acidente'}, inplace=True)
 
     df = df.assign(Veiculos=df['Veiculos'].str.split(';')).explode('Veiculos')
     df['Veiculos'] = df['Veiculos'].str.strip()
@@ -31,6 +31,9 @@ def um_veic(df):
     df['Placa'].replace(['', '0000000'], np.nan, inplace=True)
     df.drop('Contagem_Caracteres', axis=1, inplace=True)
 
+    return df
+
+def apenas_um_veiculo_com_informacoes(df):
     df = df.loc[(df['Ano_Veiculo'].notna()) | (df['Placa'].notna())]
 
     df['Contagem'] = df.groupby('OcDataConcessionaria')['OcDataConcessionaria'].transform('count')
@@ -56,65 +59,78 @@ def classificar_tipo_veiculo(df):
 
     return df
 
-
 def aquivo_placas(df, placas):
 
     df = pd.merge(df, placas, on='Placa', how='left')
-    df['Ano_Veiculo'] = df.apply(lambda row: row['Ano'] if (pd.notna(row['Ano']) and row['Ano'] != '') else row['Ano_Veiculo'], axis=1)
+    df['Ano_Veiculo'] = df.apply(lambda row: row['Ano'] if (pd.isna(row['Ano_Veiculo']) and pd.notna(row['Ano'])) else row['Ano_Veiculo'], axis=1)
+
     df['Ano_Veiculo'] = pd.to_numeric(df['Ano_Veiculo'], errors='coerce').fillna(-1).astype(int)
     df['Ano_Veiculo'] = df['Ano_Veiculo'].replace(-1, np.nan)
 
+    df['Ano'] = pd.to_numeric(df['Ano'], errors='coerce').fillna(-1).astype(int)
+    df['Ano'] = df['Ano'].replace(-1, np.nan)
+
     df['Modelo_Veiculo'] = df.apply(lambda row: row['Modelo'] if (pd.notna(row['Modelo']) and row['Modelo'] != '') else row['Modelo_Veiculo'], axis=1)
 
-    df = df.drop(columns=['Ano', 'Modelo'], axis=1)
+    df.rename(columns={'Ano':'Ano_Placa'}, inplace=True)
+
+    df = df.drop(columns=['Modelo'], axis=1)
 
     return df
 
+def tratar_idade(row):
 
+    idade_veiculo = (row['Ano_Acidente'] - row['Ano_Veiculo'])
+    idade_placa = (row['Ano_Acidente'] - row['Ano_Placa'])
+
+    if  0 <= idade_veiculo <= 20:
+        return idade_veiculo
+
+    elif idade_veiculo > 20:
+        if 0 <= idade_placa <= 20:
+            return idade_placa
+        elif idade_placa > 20:
+            if idade_veiculo <= idade_placa:
+                return idade_veiculo
+            else:
+                return idade_placa
+        elif idade_placa == -1:
+            return 0
+        else:
+            return idade_veiculo
+
+    elif idade_veiculo == -1:
+        return 0
+
+    elif pd.notna(idade_veiculo) and pd.isna(idade_placa):
+        return idade_veiculo
+
+    else:
+        return None
+
+def unir_tabelas(df,acidentes):
+
+    df.drop(columns=['Ano_Acidente', 'Ano_Veiculo', 'Placa', 'Contagem', 'Ano_Placa'], axis=1, inplace=True)
+    df.rename({'Veiculos': 'Veiculo_Unico'}, axis='columns', inplace=True)
+    acidentes = pd.merge(acidentes, df, on='OcDataConcessionaria', how='inner')
+
+    return acidentes
 
 if(__name__ == "__main__"):
 
-    placas = pd.read_csv('')
+    placas = pd.read_csv('Arquivos/placas.csv', sep=',', encoding='UTF-8')
 
-    df = classificar_tipo_veiculo(df)
+    df_acidentes = pd.read_csv('Arquivos/df_arquivos.csv', sep=',', encoding='UTF-8')
 
+    df_veiculos = veiculo_por_linha(df_acidentes)
 
-    df = veiculos_placas (df)
-    df_placas = apenas_placas (df)
-    df_placas = contar_evasao(df_placas)
-    df = pd.read_csv('C:/Users/Public/Documents/Mestrado/Dados/Cluster/PowerBi/Logit/df.csv', sep=",", encoding = "UTF-8")
+    df_veiculos = apenas_um_veiculo_com_informacoes(df_veiculos)
 
-    placas_api = pd.read_csv('C:/Users/Public/Documents/Mestrado/Dados/Cluster/PowerBi/Logit/placas_api2.csv', sep=",", encoding = "UTF-8")
+    df_veiculos = classificar_tipo_veiculo(df_veiculos)
 
-    #Unindo a tabela fipe com a planilha placas criada
-    placas = pd.merge(df_placas, placas_api, on='Placa', how='left')
-    placas.loc[placas['Ano_y'] > 1900, 'Ano Placa'] = placas['Ano_y']
-    placas['Ano Placa'].value_counts()
-    placas.dtypes
+    df_veiculos = aquivo_placas(df_veiculos,placas)
 
+    df_veiculos['Idade_Veiculo'] = df_veiculos.apply(lambda row: tratar_idade(row), axis = 1)
 
-    placas = pd.merge(df_placas_veic1, placas_api, left_on='Placa 1' ,right_on='Placa', how='left')
-    placas['Ano veic'] = (placas['Ano'].fillna(placas['Ano 1'])).astype(int)
-    #placas['Ano veic']= placas['Ano veic'].astype (int)
-
-    placas = placas.drop(['Ano_y',], axis=1)
-    placas.dtypes
-
-
-
-
-
-    #Tratar idade
-    placas ['Idade'] = placas.apply(lambda row: row['Ano_x'] - row['Ano veic'] if row['Ano veic'] != '' and (row['Ano_x'] - row['Ano veic']) >= 0 else None, axis=1)
-
-
-
-
-    vitimas_feridos['Ano Placa'] = vitimas_feridos['Ano Placa'].replace(-1,0)
-    vitimas_feridos['Idade Veiculo'] = vitimas_feridos.apply(lambda row: row['Ano'] - row['Ano Placa'] if (row['Ano Placa']>0 and (row['Ano'] - row['Ano Placa']) >= 0) else (np.nan if row['Ano Placa']==0 else 0), axis = 1)
-    vitimas_feridos = vitimas_feridos[~vitimas_feridos['Veiculos'].str.contains('BICi',na=False)]
-    vitimas_feridos.loc[vitimas_feridos['Veiculos'].str.contains('Van', na=False), 'Tipo Veic'] = 'Veic. Onibus'
-    vitimas_feridos['Tipo Veic'] = vitimas_feridos['Tipo Veic'].fillna('Outros')
-    vitimas_feridos = vitimas_feridos.drop(['Ano Placa', 'Veiculos'], axis=1)
-
+    df_acidentes = unir_tabelas(df_veiculos,df_acidentes)
 
