@@ -11,6 +11,11 @@ def veiculo_por_linha(df):
     df['Veiculos'] = df['Veiculos'].str.strip()
     df = df.query('Veiculos != ""')
 
+    df.rename({'Veiculos': 'Veiculo_Unico'}, axis='columns', inplace=True)
+    return df
+
+def tratar_ano(df):
+
     df['Ano_Veiculo'] = df['Veiculos'].str.extract(r'/(\d+)[)]')
     df['Ano_Veiculo'] = pd.to_numeric(df['Ano_Veiculo'], errors='coerce').fillna(-1).astype(int)
 
@@ -24,18 +29,19 @@ def veiculo_por_linha(df):
 
     df['Ano_Veiculo'] = (df['Ano_Veiculo'].mask((df['Ano_Veiculo'] > 2023) | (df['Ano_Veiculo'] < 1950), np.nan))
 
+    return df
+
+def tratar_placa(df):
     df['Placa'] = df['Veiculos'].str.extract(r':(.*?)-')
     df['Placa'].replace('', np.nan, inplace=True)
     df['Contagem_Caracteres'] = df['Placa'].str.len()
     df['Placa'] = df['Placa'].mask((df['Contagem_Caracteres'] < 7), np.nan)
     df['Placa'].replace(['', '0000000'], np.nan, inplace=True)
-
-    df.rename({'Veiculos': 'Veiculo_Unico'}, axis='columns', inplace=True)
     df.drop('Contagem_Caracteres', axis=1, inplace=True)
 
     return df
 
-def apenas_um_veiculo_com_informacoes(df):
+def apenas_veiculo_com_informacoes(df):
     df = df.loc[(df['Ano_Veiculo'].notna()) | (df['Placa'].notna())]
 
     df['Contagem'] = df.groupby('OcDataConcessionaria')['OcDataConcessionaria'].transform('count')
@@ -61,7 +67,7 @@ def classificar_tipo_veiculo(df):
 
     return df
 
-def aquivo_placas(df, placas):
+def incluir_placas_api(df, placas):
 
     df = pd.merge(df, placas, on='Placa', how='left')
     df['Ano_Veiculo'] = df.apply(lambda row: row['Ano'] if (pd.isna(row['Ano_Veiculo']) and pd.notna(row['Ano'])) else row['Ano_Veiculo'], axis=1)
@@ -120,11 +126,15 @@ if(__name__ == "__main__"):
 
     df_veiculos = veiculo_por_linha(df_acidentes)
 
-    df_veiculos = apenas_um_veiculo_com_informacoes(df_veiculos)
+    df_veiculos = tratar_ano(df_veiculos)
+
+    df_veiculos = tratar_placa(df_veiculos)
+
+    df_veiculos = apenas_veiculo_com_informacoes(df_veiculos)
 
     df_veiculos = classificar_tipo_veiculo(df_veiculos)
 
-    df_veiculos = aquivo_placas(df_veiculos,placas)
+    df_veiculos = incluir_placas_api(df_veiculos,placas)
 
     df_veiculos['Idade_Veiculo'] = df_veiculos.apply(lambda row: tratar_idade(row), axis = 1)
 
