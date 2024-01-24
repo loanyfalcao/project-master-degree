@@ -74,7 +74,7 @@ def aquivo_placas(df, placas):
 
     df.rename(columns={'Ano':'Ano_Placa'}, inplace=True)
 
-    df = df.drop(columns=['Modelo'], axis=1)
+    df = df.drop(columns=['Modelojashdakjdfhkajsdh'], axis=1)
 
     return df
 
