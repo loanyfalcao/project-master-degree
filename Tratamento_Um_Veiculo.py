@@ -9,7 +9,7 @@ def veiculo_por_linha(df):
 
     df = df.assign(Veiculos=df['Veiculos'].str.split(';')).explode('Veiculos')
     df['Veiculos'] = df['Veiculos'].str.strip()
-    df = df.query('Veiculos != ""')
+    df = df.loc[(df['Veiculos'].notna())]
 
     df.rename({'Veiculos': 'Veiculo_Unico'}, axis='columns', inplace=True)
     return df
