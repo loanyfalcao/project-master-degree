@@ -29,6 +29,8 @@ def veiculo_por_linha(df):
     df['Contagem_Caracteres'] = df['Placa'].str.len()
     df['Placa'] = df['Placa'].mask((df['Contagem_Caracteres'] < 7), np.nan)
     df['Placa'].replace(['', '0000000'], np.nan, inplace=True)
+
+    df.rename({'Veiculos': 'Veiculo_Unico'}, axis='columns', inplace=True)
     df.drop('Contagem_Caracteres', axis=1, inplace=True)
 
     return df
@@ -45,9 +47,9 @@ def apenas_um_veiculo_com_informacoes(df):
 def classificar_tipo_veiculo(df):
 
 
-    df['Tipo_Veiculo'] = df['Veiculos'].str.extract(r'^(.*?)(?=\()')
-    df['Marca_Veiculo'] = df['Veiculos'].str.extract(r'\((.*?)\/')
-    df['Modelo_Veiculo'] = df['Veiculos'].str.extract(r'/(.*?):')
+    df['Tipo_Veiculo'] = df['Veiculo_Unico'].str.extract(r'^(.*?)(?=\()')
+    df['Marca_Veiculo'] = df['Veiculo_Unico'].str.extract(r'\((.*?)\/')
+    df['Modelo_Veiculo'] = df['Veiculo_Unico'].str.extract(r'/(.*?):')
 
     df['Tipo_Veiculo'] = (df['Tipo_Veiculo'].replace(['AUTomovel', 'Perua/Caminhonete/Camioneta'],'Veiculo Leve').
                            replace(['MOTocicleta', 'MOTo Frete'],'Motocicleta').
@@ -108,13 +110,6 @@ def tratar_idade(row):
     else:
         return None
 
-def unir_tabelas(df,acidentes):
-
-    df.drop(columns=['Ano_Acidente', 'Ano_Veiculo', 'Placa', 'Contagem', 'Ano_Placa'], axis=1, inplace=True)
-    df.rename({'Veiculos': 'Veiculo_Unico'}, axis='columns', inplace=True)
-    acidentes = pd.merge(acidentes, df, on='OcDataConcessionaria', how='inner')
-
-    return acidentes
 
 
 if(__name__ == "__main__"):
@@ -133,5 +128,9 @@ if(__name__ == "__main__"):
 
     df_veiculos['Idade_Veiculo'] = df_veiculos.apply(lambda row: tratar_idade(row), axis = 1)
 
-    df_acidentes = unir_tabelas(df_veiculos,df_acidentes)
+    df_veiculos.drop(columns=['Ano_Acidente', 'Ano_Veiculo', 'Placa', 'Contagem', 'Ano_Placa'], axis=1, inplace=True)
+
+    df_veiculos.to_csv('Arquivos/df_veiculo_unico.csv', sep=',', index=False, encoding='UTF-8')
+
+
 
