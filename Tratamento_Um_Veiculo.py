@@ -108,13 +108,6 @@ def tratar_idade(row):
     else:
         return None
 
-def unir_tabelas(df,acidentes):
-
-    df.drop(columns=['Ano_Acidente', 'Ano_Veiculo', 'Placa', 'Contagem', 'Ano_Placa'], axis=1, inplace=True)
-    df.rename({'Veiculos': 'Veiculo_Unico'}, axis='columns', inplace=True)
-    acidentes = pd.merge(acidentes, df, on='OcDataConcessionaria', how='inner')
-
-    return acidentes
 
 if(__name__ == "__main__"):
 
