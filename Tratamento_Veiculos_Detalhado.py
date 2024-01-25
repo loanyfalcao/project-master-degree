@@ -2,27 +2,6 @@ import pandas as pd
 import numpy as np
 import Tratamento_Um_Veiculo
 
-def colunas_placas_ano(df):
-
-    df = df[['Ano', 'OcDataConcessionaria', 'Numveic', 'Veiculos']]
-
-    veiculos = df['Veiculos'].str.split(';', expand=True)
-    veiculos.columns = [f'Veiculo {i + 1}' for i in range(veiculos.shape[1])]
-    df = pd.concat([df, veiculos], axis=1)
-
-    # Separando placas
-    for coluna in df.columns:
-        if coluna.startswith('Veiculo '):
-            nova_coluna = f'Placa {coluna.split(" ")[-1]}'
-            df[nova_coluna] = df[coluna].str.extract(r':(.*?)-')
-            for coluna in df.columns:
-                if coluna.startswith('Veiculo '):
-                    # Criando o nome da nova coluna
-                    novo_ano = f'Ano {coluna.split(" ")[-1]}'
-                    df[novo_ano] = df[coluna].str.extract(r'/(\d+)[)]')
-                    df[novo_ano] = df[novo_ano].replace(0.0,'')
-    return df
-
 def incluir_placas_api(df, placas):
 
     df = pd.merge(df, placas, on='Placa', how='left')
@@ -30,7 +9,6 @@ def incluir_placas_api(df, placas):
 
     df['Ano_Placa'] = pd.to_numeric(df['Ano_Placa'], errors='coerce').fillna(-1).astype(int)
     df['Ano_Placa'] = df['Ano_Placa'].replace([0, -1], np.nan)
-    df.dropna(subset='Ano_Placa', inplace=True)
 
     return df
 
@@ -64,12 +42,11 @@ def tratar_ano(row):
     else:
         return None
 
-
 def colunas_tipo_veiculo(df):
 
-    df = df[['Ano', 'OcDataConcessionaria', 'Numveic', 'Veiculos']]
+    df = df[['OcDataConcessionaria', 'Ano', 'Numveic', 'Veiculos']]
     apoio_veiculos = df.copy()
-    apoio_veiculos.drop(['Numveic','Ano'], inplace=True, axis=1)
+    apoio_veiculos.drop(['Ano', 'Numveic'], inplace=True, axis=1)
 
     palavra_moto = 'moto'
     moto = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_moto, case=False)]
@@ -125,6 +102,25 @@ def colunas_tipo_veiculo(df):
 
     return df
 
+def colunas_placas_ano(df):
+
+    df = df[['Ano', 'OcDataConcessionaria', 'Numveic', 'Veiculos']]
+
+    veiculos = df['Veiculos'].str.split(';', expand=True)
+    veiculos.columns = [f'Veiculo {i + 1}' for i in range(veiculos.shape[1])]
+    df = pd.concat([df, veiculos], axis=1)
+
+    for coluna in df.columns:
+        if coluna.startswith('Veiculo '):
+            nova_coluna = f'Placa {coluna.split(" ")[-1]}'
+            df[nova_coluna] = df[coluna].str.extract(r':(.*?)-')
+            for coluna in df.columns:
+                if coluna.startswith('Veiculo '):
+                    novo_ano = f'Ano {coluna.split(" ")[-1]}'
+                    df[novo_ano] = df[coluna].str.extract(r'/(\d+)[)]')
+                    df[novo_ano] = df[novo_ano].replace(0.0,'')
+    return df
+
 def contar_evasao(df):
 
     palavra = 'evadi'
@@ -150,7 +146,6 @@ def contar_evasao(df):
 
     return df
 
-'''
 def retirar_vazios (df):
     for i in range(len(df.filter(regex='^Veiculo ').columns.tolist())):
         df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace('',np.nan)
@@ -159,26 +154,28 @@ def retirar_vazios (df):
 
     return df
 
-'''
+
+
 if(__name__ == "__main__"):
 
     placas = pd.read_csv('Arquivos/placas_api.csv', sep=',', encoding='UTF-8')
 
     df_acidentes = pd.read_csv('Arquivos/df_acidentes.csv', sep=',', encoding='UTF-8')
 
-    df_veiculos = Tratamento_Um_Veiculo.veiculo_por_linha(df_acidentes)
+    df_placa = Tratamento_Um_Veiculo.veiculo_por_linha(df_acidentes)
 
-    df_veiculos = Tratamento_Um_Veiculo.tratar_ano(df_veiculos)
+    df_placa = Tratamento_Um_Veiculo.tratar_ano(df_placa)
 
-    df_veiculos = Tratamento_Um_Veiculo.tratar_placa(df_veiculos)
+    df_placa = Tratamento_Um_Veiculo.tratar_placa(df_placa)
 
-    df_veiculos = incluir_placas_api(df_veiculos, placas)
+    df_placa = incluir_placas_api(df_placa, placas)
+    df.dropna(subset='Ano_Veiculo', inplace=True)
 
-    df_veiculos['Ano_Veiculo'] = df_veiculos.apply(lambda row: tratar_ano(row), axis=1)
-    df_veiculos = df_veiculos.drop(columns=['Ano_Placa','Ano_Acidente'], axis=1)
+    df_placa['Ano_Veiculo'] = df_placa.apply(lambda row: tratar_ano(row), axis=1)
+    df_placa = df_placa.drop(columns=['Ano_Placa', 'Ano_Acidente'], axis=1)
 
-#MUITAS COLUNAS
-    '''
+    df_placa.to_csv('Arquivos/df_placa.csv', sep=',', index=False, encoding='UTF-8')
+
     df_veiculos = colunas_tipo_veiculo(df_acidentes)
 
     df_veiculos = colunas_placas_ano(df_veiculos)
@@ -186,6 +183,6 @@ if(__name__ == "__main__"):
     df_veiculos = contar_evasao(df_veiculos)
 
     #df_veiculos = retirar_vazios(df_veiculos)
-    '''
+
     df_veiculos.to_csv('Arquivos/df_veiculo_detalhado.csv', sep=',', index=False, encoding='UTF-8')
 
