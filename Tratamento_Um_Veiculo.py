@@ -13,7 +13,7 @@ def veiculo_por_linha(df):
 
     return df
 
-def tratar_ano(df):
+def tratar_erros_ano(df):
 
     df['Ano_Veiculo'] = df['Veiculo_Unico'].str.extract(r'/(\d+)[)]')
     df['Ano_Veiculo'] = pd.to_numeric(df['Ano_Veiculo'], errors='coerce').fillna(-1).astype(int)
@@ -53,7 +53,9 @@ def classificar_tipo_veiculo(df):
 
 
     df['Tipo_Veiculo'] = df['Veiculo_Unico'].str.extract(r'^(.*?)(?=\()')
+
     df['Marca_Veiculo'] = df['Veiculo_Unico'].str.extract(r'\((.*?)\/')
+
     df['Modelo_Veiculo'] = df['Veiculo_Unico'].str.extract(r'/(.*?):')
 
     df['Tipo_Veiculo'] = (df['Tipo_Veiculo'].replace(['AUTomovel', 'Perua/Caminhonete/Camioneta'],'Veiculo Leve').
@@ -62,7 +64,6 @@ def classificar_tipo_veiculo(df):
                            replace(['Van', 'ONIbus', 'Microonibus'],'Veiculo Passageiro').
                            replace('BICicleta','Bicicleta').
                            replace('Trator','Outros'))
-
 
     return df
 
@@ -77,11 +78,7 @@ def incluir_placas_api(df, placas):
     df['Ano'] = pd.to_numeric(df['Ano'], errors='coerce').fillna(-1).astype(int)
     df['Ano'] = df['Ano'].replace(-1, np.nan)
 
-    df['Modelo_Veiculo'] = df.apply(lambda row: row['Modelo'] if (pd.notna(row['Modelo']) and row['Modelo'] != '') else row['Modelo_Veiculo'], axis=1)
-
     df.rename(columns={'Ano':'Ano_Placa'}, inplace=True)
-
-    df = df.drop(columns=['Modelo'], axis=1)
 
     return df
 
@@ -125,7 +122,7 @@ if(__name__ == "__main__"):
 
     df_veiculos = veiculo_por_linha(df_acidentes)
 
-    df_veiculos = tratar_ano(df_veiculos)
+    df_veiculos = tratar_erros_ano(df_veiculos)
 
     df_veiculos = tratar_placa(df_veiculos)
 
@@ -134,9 +131,10 @@ if(__name__ == "__main__"):
     df_veiculos = classificar_tipo_veiculo(df_veiculos)
 
     df_veiculos = incluir_placas_api(df_veiculos,placas)
+    df_veiculos['Modelo_Veiculo'] = df_veiculos.apply(lambda row: row['Modelo'] if (pd.notna(row['Modelo']) and row['Modelo'] != '') else row['Modelo_Veiculo'],axis=1)
 
     df_veiculos['Idade_Veiculo'] = df_veiculos.apply(lambda row: tratar_idade(row), axis = 1)
-    df_veiculos.drop(columns=['Ano_Acidente', 'Ano_Veiculo', 'Placa', 'Contagem', 'Ano_Placa'], axis=1, inplace=True)
+    df_veiculos.drop(columns=['Ano_Acidente', 'Ano_Veiculo', 'Placa', 'Contagem', 'Ano_Placa', 'Modelo'], axis=1, inplace=True)
 
     df_veiculos.to_csv('Arquivos/df_veiculo_unico.csv', sep=',', index=False, encoding='UTF-8')
 

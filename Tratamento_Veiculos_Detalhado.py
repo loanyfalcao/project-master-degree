@@ -5,10 +5,15 @@ import Tratamento_Um_Veiculo
 def incluir_placas_api(df, placas):
 
     df = pd.merge(df, placas, on='Placa', how='left')
-    df.rename(columns={'Ano':'Ano_Placa'}, inplace=True)
+    df['Ano_Veiculo'] = df.apply(lambda row: row['Ano'] if (pd.isna(row['Ano_Veiculo']) and pd.notna(row['Ano'])) else row['Ano_Veiculo'],axis=1)
 
-    df['Ano_Placa'] = pd.to_numeric(df['Ano_Placa'], errors='coerce').fillna(-1).astype(int)
-    df['Ano_Placa'] = df['Ano_Placa'].replace([0, -1], np.nan)
+    df['Ano_Veiculo'] = pd.to_numeric(df['Ano_Veiculo'], errors='coerce').fillna(-1).astype(int)
+    df['Ano_Veiculo'] = df['Ano_Veiculo'].replace(-1, np.nan)
+
+    df['Ano'] = pd.to_numeric(df['Ano'], errors='coerce').fillna(-1).astype(int)
+    df['Ano'] = df['Ano'].replace(-1, np.nan)
+
+    df.rename(columns={'Ano': 'Ano_Placa'}, inplace=True)
 
     return df
 
@@ -51,7 +56,7 @@ def colunas_tipo_veiculo(df):
     palavra_moto = 'moto'
     moto = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_moto, case=False)]
     moto = moto.drop(columns=['Veiculos'])
-    moto['Veic. Moto'] = True
+    moto['Motocicleta'] = True
     df = pd.merge(df, moto, on='OcDataConcessionaria', how='left')
 
 
@@ -67,7 +72,7 @@ def colunas_tipo_veiculo(df):
     veic_leve = pd.concat([automovel, caminhonete, perua], axis=0, ignore_index=True)
     veic_leve = veic_leve.drop(columns=['Veiculos'])
     veic_leve = veic_leve.drop_duplicates(subset='OcDataConcessionaria')
-    veic_leve['Veic. Leve'] = True
+    veic_leve['Veiculo Leve'] = True
     df = pd.merge(df, veic_leve, on='OcDataConcessionaria', how='left')
 
 
@@ -80,7 +85,7 @@ def colunas_tipo_veiculo(df):
     veic_pesado = pd.concat([caminhao, carreta], axis=0, ignore_index=True)
     veic_pesado = veic_pesado.drop(columns='Veiculos')
     veic_pesado = veic_pesado.drop_duplicates(subset='OcDataConcessionaria')
-    veic_pesado['Veic. Pesado'] = True
+    veic_pesado['Veiculo Pesado'] = True
     df = pd.merge(df, veic_pesado, on='OcDataConcessionaria', how='left')
 
 
@@ -93,11 +98,11 @@ def colunas_tipo_veiculo(df):
     veic_onibus = pd.concat([van, onibus], axis=0, ignore_index=True)
     veic_onibus = veic_onibus.drop(columns=['Veiculos'])
     veic_onibus = veic_onibus.drop_duplicates(subset='OcDataConcessionaria')
-    veic_onibus['Veic. Onibus'] = True
+    veic_onibus['Veiculo Passageiro'] = True
     df = pd.merge(df, veic_onibus, on='OcDataConcessionaria', how='left')
 
 
-    colunas = ['Veic. Leve','Veic. Moto','Veic. Pesado','Veic. Onibus']
+    colunas = ['Veiculo Leve', 'Motocicleta', 'Veiculo Pesado', 'Veiculo Passageiro']
     df[colunas] = df[colunas].fillna(False)
 
     return df
@@ -119,6 +124,22 @@ def colunas_placas_ano(df):
                     novo_ano = f'Ano {coluna.split(" ")[-1]}'
                     df[novo_ano] = df[coluna].str.extract(r'/(\d+)[)]')
                     df[novo_ano] = df[novo_ano].replace(0.0,'')
+    return df
+
+def alterar_ano(df, placas):
+    n_veiculos = df.filter(regex='^Veiculo ').columns.tolist()
+    for i in range(1, len(n_veiculos) + 1):
+        auxiliar = df.loc[df[f'Placa {i}'].notna()]
+        auxiliar = auxiliar[['OcDataConcessionaria', f'Placa {i}']]
+        auxiliar_placas = placas[['Placa', 'Ano_Veiculo']]
+        auxiliar = pd.merge(auxiliar, auxiliar_placas, left_on=f'Placa {i}', right_on='Placa', how='left')
+        auxiliar.drop(['Placa', f'Placa {i}'], axis=1, inplace=True)
+        df = pd.merge(df, auxiliar, on='OcDataConcessionaria', how='left')
+
+        df[f'Ano {i}'] = df.apply(lambda row: row['Ano_Veiculo'] if pd.notna(row['Ano_Veiculo']) else row[f'Ano {i}'],
+                                  axis=1)
+        df.drop('Ano_Veiculo', axis=1, inplace=True)
+
     return df
 
 def contar_evasao(df):
@@ -164,12 +185,11 @@ if(__name__ == "__main__"):
 
     df_placa = Tratamento_Um_Veiculo.veiculo_por_linha(df_acidentes)
 
-    df_placa = Tratamento_Um_Veiculo.tratar_ano(df_placa)
+    df_placa = Tratamento_Um_Veiculo.tratar_erros_ano(df_placa)
 
     df_placa = Tratamento_Um_Veiculo.tratar_placa(df_placa)
 
-    df_placa = incluir_placas_api(df_placa, placas)
-    df.dropna(subset='Ano_Veiculo', inplace=True)
+    df_placa = Tratamento_Um_Veiculo.incluir_placas_api(df_placa, placas)
 
     df_placa['Ano_Veiculo'] = df_placa.apply(lambda row: tratar_ano(row), axis=1)
     df_placa = df_placa.drop(columns=['Ano_Placa', 'Ano_Acidente'], axis=1)
@@ -179,6 +199,8 @@ if(__name__ == "__main__"):
     df_veiculos = colunas_tipo_veiculo(df_acidentes)
 
     df_veiculos = colunas_placas_ano(df_veiculos)
+
+    #df_veiculos = alterar_ano(df_veiculos, df_placa)
 
     df_veiculos = contar_evasao(df_veiculos)
 
