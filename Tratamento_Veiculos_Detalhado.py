@@ -17,35 +17,6 @@ def incluir_placas_api(df, placas):
 
     return df
 
-def tratar_ano(row):
-
-    idade_veiculo = (row['Ano_Acidente'] - row['Ano_Veiculo'])
-    idade_placa = (row['Ano_Acidente'] - row['Ano_Placa'])
-
-    if 0 <= idade_veiculo <= 20:
-        return row['Ano_Veiculo']
-
-    elif idade_veiculo > 20:
-        if 0 <= idade_placa <= 20:
-            return row['Ano_Placa']
-        elif idade_placa > 20:
-            if idade_veiculo <= idade_placa:
-                return row['Ano_Veiculo']
-            else:
-                return row['Ano_Placa']
-        elif idade_placa == -1:
-            return row['Ano_Acidente']
-        else:
-            return row['Ano_Veiculo']
-
-    elif idade_veiculo == -1:
-        return row['Ano_Acidente']
-
-    elif pd.notna(idade_veiculo) and pd.isna(idade_placa):
-        return row['Ano_Veiculo']
-
-    else:
-        return None
 
 def colunas_tipo_veiculo(df):
 

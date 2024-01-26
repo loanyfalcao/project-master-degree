@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import Tratamento_Veiculos_Detalhado
 
 def veiculo_por_linha(df):
 
@@ -82,36 +83,35 @@ def incluir_placas_api(df, placas):
 
     return df
 
-def tratar_idade(row):
+def tratar_ano(row):
 
     idade_veiculo = (row['Ano_Acidente'] - row['Ano_Veiculo'])
     idade_placa = (row['Ano_Acidente'] - row['Ano_Placa'])
 
-    if  0 <= idade_veiculo <= 20:
-        return idade_veiculo
+    if 0 <= idade_veiculo <= 20:
+        return row['Ano_Veiculo']
 
     elif idade_veiculo > 20:
         if 0 <= idade_placa <= 20:
-            return idade_placa
+            return row['Ano_Placa']
         elif idade_placa > 20:
             if idade_veiculo <= idade_placa:
-                return idade_veiculo
+                return row['Ano_Veiculo']
             else:
-                return idade_placa
+                return row['Ano_Placa']
         elif idade_placa == -1:
-            return 0
+            return row['Ano_Acidente']
         else:
-            return idade_veiculo
+            return row['Ano_Veiculo']
 
     elif idade_veiculo == -1:
-        return 0
+        return row['Ano_Acidente']
 
     elif pd.notna(idade_veiculo) and pd.isna(idade_placa):
-        return idade_veiculo
+        return row['Ano_Veiculo']
 
     else:
         return None
-
 
 
 if(__name__ == "__main__"):
@@ -133,7 +133,9 @@ if(__name__ == "__main__"):
     df_veiculos = incluir_placas_api(df_veiculos,placas)
     df_veiculos['Modelo_Veiculo'] = df_veiculos.apply(lambda row: row['Modelo'] if (pd.notna(row['Modelo']) and row['Modelo'] != '') else row['Modelo_Veiculo'],axis=1)
 
-    df_veiculos['Idade_Veiculo'] = df_veiculos.apply(lambda row: tratar_idade(row), axis = 1)
+    df_veiculos['Ano_Veiculo'] = df_veiculos.apply(lambda row: tratar_ano(row), axis=1)
+    df_veiculos['Idade_Veiculo'] = df_veiculos['Ano_Acidente'] - df_veiculos['Ano_Veiculo']
+
     df_veiculos.drop(columns=['Ano_Acidente', 'Ano_Veiculo', 'Placa', 'Contagem', 'Ano_Placa', 'Modelo'], axis=1, inplace=True)
 
     df_veiculos.to_csv('Arquivos/df_veiculo_unico.csv', sep=',', index=False, encoding='UTF-8')
