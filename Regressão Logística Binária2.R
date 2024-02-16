@@ -10,11 +10,7 @@ library(ggplot2)
 pacman::p_load(dplyr, psych, car, MASS, DescTools, QuantPsyc, ggplot2)
 
 
-dados_v2 <- read.csv('rvt900_litoral_feridos.csv', stringsAsFactors = TRUE,fileEncoding = "UTF-8")
-
-dados <- dados_v2
-
-dados <- subset(dados_v2, Ano_x >= 2016)
+dados <- read.csv('Arquivos/Logit/teste.csv', stringsAsFactors = TRUE,fileEncoding = "UTF-8")
 
 View(dados)  
 glimpse(dados) 
@@ -29,13 +25,11 @@ summary(dados)
 
 levels(dados$Gravidade)  # Fatal = categoria de referencia
 
-mod <- glm(Gravidade ~ Período + Ano_x + PosicaoVitima,
+mod <- glm(Gravidade ~ PosicaoVitima + Sexo + TracadoPista + Estacao + PerfilPista +  Período,
            family = binomial(link = 'logit'), data = dados)
 
-summary(stdres(mod))
-#Gravidade + CondicaoPista + TipoAcidente2 + Período + Estação + Idade_y + Tipo.Veic,
-#PosicaoVitima, Sexo, TracadoPista, Ano_x, 
-
+# Aplicar filtro para manter apenas as colunas utilizadas
+dados_filtrados <- dados[c("Gravidade","PosicaoVitima", "Sexo", "TracadoPista","Estacao", "PerfilPista", "Período")]
 
 #Ausencia de outliers/ pontos de alavancagem
 plot(mod, which = 5)
@@ -47,27 +41,27 @@ summary(stdres(mod))
 #Ausencia de multicolinearidade
 
 ### Multicolinearidade: r > 0.9 (ou 0.8)
-pairs.panels(dados)
+pairs.panels(dados_filtrados)
 
 
 ### Multicolinearidade: VIF > 10
-vif(mod)
+VIF(mod)
 
 
 #Box-Tidwell - Analisar relaçao entre a VI e o log da VD
 
-intlog1 <- dados$Período * log(dados$Período)
-intlog2 <- dados$Ano_x * log(dados$Ano_x)
-intlog3 <- dados$Idade_y * log(dados$Idade_y)
-intlog3 <- dados$PosicaoVitima * log(dados$PosicaoVitima)
+intlog1 <- dados_filtrados$PosicaoVitima * log(dados_filtrados$PosicaoVitima)
+intlog2 <- dados_filtrados$Sexo * log(dados_filtrados$Sexo)
+intlog3 <- dados_filtrados$CondicaoPista * log(dados_filtrados$CondicaoPista)
+intlog4 <- dados_filtrados$Período * log(dados_filtrados$Período)
 
-dados$intlog1 <- intlog1
-dados$intlog2 <- intlog2
-dados$intlog3 <- intlog3
-dados$intlog4 <- intlog4
+dados_filtrados$intlog1 <- intlog1
+dados_filtrados$intlog2 <- intlog2
+dados_filtrados$intlog3 <- intlog3
+dados_filtrados$intlog4 <- intlog4
 
-modint <- glm(Gravidade ~ Ano_x + Idade_y + PosicaoVitima + intlog2 + intlog3,
-              family = binomial(link = 'logit'), data = dados)
+modint <- glm(Gravidade ~ PosicaoVitima + Sexo + CondicaoPista + Período + intlog1 + intlog2 + intlog3 + intlog4,
+              family = binomial(link = 'logit'), data = dados_filtrados)
 
 summary(modint)
 
@@ -75,14 +69,11 @@ summary(modint)
 ### Outra opcao
 
 logito <- mod$linear.predictors
-# prob <- predict(mod, type = "response")
-# logito <- log(prob/(1-prob))
 
-dados$logito <- logito
+dados_filtrados$logito <- logito
 
 #### Analise da relacao linear
-
-ggplot(dados, aes(logito, Gravidade)) +
+ggplot(dados_filtrados, aes(logito, Gravidade)) +
   geom_point(size = 0.5, alpha = 0.5) +
   geom_smooth(method = "loess") +
   theme_classic()
@@ -104,7 +95,7 @@ summary(mod)
 
 
 ## Obtencao das razoes de chance com IC 95% (usando erro padrao = SPSS)
-
+exp(coef(mod))
 
 exp(cbind(OR = coef(mod), confint.default(mod)))
 
@@ -113,7 +104,7 @@ exp(cbind(OR = coef(mod), confint.default(mod)))
 # Passo 7: Cria??o e an?lise de um segundo modelo
 
 mod2 <- glm(Gravidade ~ Período,
-            family = binomial(link = 'logit'), data = dados)
+            family = binomial(link = 'logit'), data = dados_filtrados)
 
 
 ## Overall effects
@@ -156,22 +147,22 @@ anova(mod2, mod, test="Chisq")
 
 
 # Tabela de classifica??o
-ClassLog(mod, dados$Gravidade)
-ClassLog(mod2, dados$Gravidade)
+ClassLog(mod, dados_filtrados$Gravidade)
+ClassLog(mod2, dados_filtrados$Gravidade)
 
 
 
 ####### Como modificar as categorias de refer?ncia? ########
 
-levels(dados$Gravidade)
+levels(dados_filtrados$Gravidade)
 
-dados$Gravidade <- relevel(dados$Gravidade, ref = "Fatal")
+dados_filtrados$Gravidade <- relevel(dados_filtrados$Gravidade, ref = "Fatal")
 
 
 ### ATEN??O: ? necess?rio rodar o modelo novamente!
 
 
-levels(dados$Cancer)
+levels(dados_filtrados$Cancer)
 
-dados$Cancer <- relevel(dados$Cancer, ref = "Sim")
+dados_filtrados$Cancer <- relevel(dados_filtrados$Cancer, ref = "Sim")
 

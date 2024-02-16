@@ -2,7 +2,7 @@ from sklearn.cluster import DBSCAN
 import pandas as pd
 import numpy as np
 
-from tratamento import df_acidentes
+from Tratamento_Base import df_acidentes
 
 def desvio_padrao(df,valor_minimo = 50, valor_maximo = 200):
 

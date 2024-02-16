@@ -1,9 +1,11 @@
-import tratamento
 import pandas as pd
 import numpy as np
-from sklearn.cluster import DBSCAN
+import Tratamento_Base
 
 def modelo_DBSCAN(df):
+    from sklearn.cluster import DBSCAN
+
+    df['CssRodSentido'] = df.apply(lambda x: '%s.%s.%s' % (x['Concessionaria'], x['Rodovia'], x['Sentido']), axis=1)
     sentido = df['Sentido_1'].unique()
     rodovia = df['Rodovia_1'].unique()
     resumo_total = pd.DataFrame()
@@ -18,7 +20,7 @@ def modelo_DBSCAN(df):
             X = np.array(X)
             X = X.astype(float)
 
-            modelo = DBSCAN(eps = 100/111320, min_samples=5).fit(X)
+            modelo = DBSCAN(eps=(100/111320), min_samples=5).fit(X)
 
             class_predictions = modelo.labels_
 
@@ -57,7 +59,7 @@ def modelo_DBSCAN(df):
                                                                                                                                                    (row['kmmt'] >= resumo.kmmin) &
                                                                                                                                                    (row['kmmt'] < resumo.kmmax), 'CLUSTERS_DBSCAN'].empty else None, axis=1)
 
-            df2.drop(["CssRodSentido", "Sentido_1", "Rodovia_1","Concessionaria_1"], axis=1, inplace=True)
+            df2.drop(["CssRodSentido", "Sentido_1", "Rodovia_1","Concessionaria_1", "UPS"], axis=1, inplace=True)
             df2.reset_index(inplace=True)
 
             acidentes_total = pd.concat([acidentes_total, df2], axis=0, ignore_index=True)
@@ -67,16 +69,24 @@ def modelo_DBSCAN(df):
 
     return resumo_total, acidentes_total
 
-df_acidentes = pd.read_csv('df_arquivos.csv', encoding='utf-8', sep =',')
 
-df_DBSCAN = df_acidentes.copy()
-df_DBSCAN['CssRodSentido'] = df_DBSCAN.apply(lambda x: '%s.%s.%s' % (x['Concessionaria'],x['Rodovia'],x['Sentido']), axis=1)
-df_DBSCAN = tratamento.coluna_em_numeros (df_DBSCAN)
-#df_base = tratamento.definir_anos(df_cluster, 2010, 2014)
-df_DBSCAN = tratamento.escolher_concessionaria(df_DBSCAN, concessionaria=['Litoral Sul'])
+if __name__ == "__main__":
+    df_acidentes = pd.read_csv('Arquivos/df_uniao.csv', encoding='utf-8', sep =',')
 
+    #Apenas Acidentes com vitimas
+    df_acidentes = df_acidentes.loc[(df_acidentes['DescrOcorrencia'] != 'Acidente com Danos Materiais')]
 
-resumo_total, acidente_total = modelo_DBSCAN(df_DBSCAN)
+    #Apenas vitimas feridas
+    df_acidentes = df_acidentes.loc[(df_acidentes['Gravidade'] != 'Ileso')]
 
-resumo_total.to_csv('ResumoAcidentes.csv', encoding='UTF-8', sep = ',')
-acidente_total.to_csv('AcidentesCluster.csv', encoding='UTF-8', sep = ',')
+    # df_acidentes = Tratamento_Base.definir_anos(df_acidentes, 2010, 2014)
+
+    # Veiculo unico
+    #df_veiculos = pd.read_csv('Arquivos/df_veiculo_unico.csv')
+    #df_acidentes_veiculos = df_acidentes.merge(df_veiculos, how='inner', on='OcDataConcessionaria')
+
+    resumo_total, acidente_total = modelo_DBSCAN(df_acidentes)
+
+    resumo_total.to_csv('Arquivos/Cluster/ResumoVitimas_Acidentes_VeiculoUnico_ApenasFerido.csv', encoding='UTF-8', sep = ',')
+    acidente_total.to_csv('Arquivos/Cluster/Vitimas_Acidentes_VeiculoUnico_ApenasFerido.csv', encoding='UTF-8', sep = ',', index=False)
+

@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import Tratamento_Veiculos_Detalhado
 
 def veiculo_por_linha(df):
 
@@ -59,12 +58,12 @@ def classificar_tipo_veiculo(df):
 
     df['Modelo_Veiculo'] = df['Veiculo_Unico'].str.extract(r'/(.*?):')
 
-    df['Tipo_Veiculo'] = (df['Tipo_Veiculo'].replace(['AUTomovel', 'Perua/Caminhonete/Camioneta'],'Veiculo Leve').
-                           replace(['MOTocicleta', 'MOTo Frete'],'Motocicleta').
+    df['Tipo_Veiculo'] = (df['Tipo_Veiculo'].replace(['AUTomovel', 'Perua/Caminhonete/Camioneta'], 'Veiculo Leve').
+                           replace(['MOTocicleta', 'MOTo Frete'], 'Motocicleta').
                            replace(['CAMinhão', 'CARreta'], 'Veiculo Pesado').
-                           replace(['Van', 'ONIbus', 'Microonibus'],'Veiculo Passageiro').
-                           replace('BICicleta','Bicicleta').
-                           replace('Trator','Outros'))
+                           replace(['Van', 'ONIbus', 'Microonibus'], 'Veiculo Passageiro').
+                           replace('BICicleta', 'Bicicleta').
+                           replace('Trator', 'Outros').replace('Evadiu-se', 'Outros'))
 
     return df
 
@@ -113,6 +112,17 @@ def tratar_ano(row):
     else:
         return None
 
+def obter_idade_veiculo(idade):
+    if 0 <= idade <= 5:
+        return '0-5 anos'
+    elif 6 <= idade <= 10:
+        return '6-10 anos'
+    elif 11 <= idade <= 20:
+        return '11-20 anos'
+    elif idade >= 30:
+        return 'Maior que 30 anos'
+    else:
+        return 'Não Informado'
 
 if(__name__ == "__main__"):
 
@@ -135,10 +145,11 @@ if(__name__ == "__main__"):
 
     df_veiculos['Ano_Veiculo'] = df_veiculos.apply(lambda row: tratar_ano(row), axis=1)
     df_veiculos['Idade_Veiculo'] = df_veiculos['Ano_Acidente'] - df_veiculos['Ano_Veiculo']
+    df_veiculos['Cat_Idade_Veiculo'] = df_veiculos['Idade_Veiculo'].apply(obter_idade_veiculo)
 
     df_veiculos.drop(columns=['Ano_Acidente', 'Ano_Veiculo', 'Placa', 'Contagem', 'Ano_Placa', 'Modelo'], axis=1, inplace=True)
 
-    df_veiculos.to_csv('Arquivos/df_veiculo_unico.csv', sep=',', index=False, encoding='UTF-8')
+    df_veiculos.to_csv('Arquivos/df_veiculo_unico.csv')
 
 
 

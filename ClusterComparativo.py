@@ -1,4 +1,4 @@
-import tratamento
+import Tratamento_Base
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
