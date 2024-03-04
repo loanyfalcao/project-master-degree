@@ -14,7 +14,6 @@ def unir_arquivos (url):
     dfs = []
     for filename in all_filenames:
         df_temp = pd.read_csv(filename)
-        df_temp['NomeArquivo'] = os.path.basename(filename)
         dfs.append(df_temp)
 
     df = pd.concat(dfs, ignore_index=True)
@@ -31,15 +30,14 @@ def acidentes_delete_colunas(df):
 def tratar_concessionaria (df):
     if "Concessionária" in df.columns:
         df.rename(columns={'Concessionária': 'Concessionaria'}, inplace=True)
-
-    df['Concessionaria'] = (df['Concessionaria'].replace('planalta Sul', 'Planalto Sul').
-                          replace('ARTERIS FLUMINENSE', 'Fluminense').
-                          replace('INTERVIAS', 'Intervias').
-                          replace('Arteris Planalto Sul', 'Planalto Sul').
-                          replace('Arteris Fernão Dias', 'Fernão Dias').
-                          replace('Arteris Litoral Sul', 'Litoral Sul').
-                          replace('Auto Pista Regis', 'Régis Bittencourt').
-                          replace('VIAPAULISTA', 'ViaPaulista'))
+    concessionaria = {'ARTERIS FLUMINENSE':'Fluminense',
+                      'INTERVIAS':'Intervias',
+                      'Arteris Planalto Sul':'Planalto Sul',
+                      'Arteris Fernão Dias':'Fernão Dias',
+                      'Arteris Litoral Sul':'Litoral Sul',
+                      'Auto Pista Regis': 'Régis Bittencourt',
+                      'VIAPAULISTA':'ViaPaulista'}
+    df['Concessionaria'].replace(concessionaria, inplace=True)
 
     return df
 
@@ -49,7 +47,6 @@ def tratar_duplicadas(df):
         lambda row: '%s.%s.%s' %(row['NumOcorrencia'], row['DataOcorrencia'], row['Concessionaria']), axis=1)
     df.drop_duplicates(subset='OcDataConcessionaria', inplace=True)
     df.reset_index(drop=True, inplace=True)
-    df.set_index(['OcDataConcessionaria'], inplace=True)
     return df
 
 def ajustando_formatos(df):
@@ -75,8 +72,9 @@ def incluir_colunas(df):
     df['Estacao'] = df['DataOcorrencia'].apply(obter_estacao)
 
     df.dropna(subset=['DataOcorrencia'], inplace=True)
-    df['Ano'] = pd.DatetimeIndex(df['DataOcorrencia']).year
-    df['Ano'] = df['Ano'].astype(int)
+    df['Ano'] = pd.DatetimeIndex(df['DataOcorrencia']).year.astype(int)
+    df['Mes'] = pd.DatetimeIndex(df['DataOcorrencia']).month.astype(int)
+
 
     # Periodo dia
     df.dropna(subset=['Hora'], inplace=True)
@@ -211,7 +209,7 @@ def coluna_em_numeros(df):
     return df
 
 def vitimas_delete_colunas(df):
-    colunas_a_manter = ['Concessionaria', 'NumVitima', 'NumOcorrencia', 'DataOcorrencia', 'DescrOcorrencia', 'PosicaoVitima', 'Sexo', 'Idade', 'Gravidade']
+    colunas_a_manter = ['Concessionaria', 'NumVitima', 'NumOcorrencia', 'DataOcorrencia', 'DescrOcorrencia', 'PosicaoVitima', 'Sexo', 'Idade', 'Gravidade', 'Faixa_Etaria']
     return df.loc[:, colunas_a_manter]
 
 def vitimas_filtrar(df):
@@ -261,13 +259,13 @@ def de_para_vitimas(df):
     df['Idade'] = df.apply(lambda row: row['Idade'] if (row['Idade'] > 15) else (
         0 if (row['Idade'] <= 15 and row['PosicaoVitima'] == 'Condutor') else row['Idade']), axis=1)
 
-    df['Faixa Etaria'] = df['Idade'].apply(obter_idade)
+    df['Faixa_Etaria'] = df['Idade'].apply(obter_idade)
 
     return df
 
 def criando_index(df):
     df['DataOcorrencia'] = df['DataOcorrencia'].dt.date
-    df['OcDataConcessionaria'] = df.apply(lambda x: '%s.%s.%s' % (x['NumOcorrencia'], x['Data'], x['Concessionaria']), axis=1)
+    df['OcDataConcessionaria'] = df.apply(lambda x: '%s.%s.%s' % (x['NumOcorrencia'], x['DataOcorrencia'], x['Concessionaria']), axis=1)
     df.set_index(['OcDataConcessionaria'], inplace=True)
     return df
 
@@ -285,11 +283,11 @@ if __name__ == "__main__":
     df_acidentes = tratar_nao_def(df_acidentes)
     df_acidentes = definir_anos(df_acidentes, 2009, 2022)
 
-    concessionaria = ['Litoral Sul', 'Fernão Dias', 'Regis Bittencourt', 'Planalto Sul', 'Fluminense']
+    concessionaria = ['Litoral Sul', 'Fernão Dias', 'Régis Bittencourt', 'Planalto Sul', 'Fluminense']
     df_acidentes = df_acidentes[df_acidentes['Concessionaria'].isin(concessionaria)]
     df_acidentes = coluna_em_numeros(df_acidentes)
 
-    df_acidentes.to_csv('Arquivos/df_acidentes.csv', index=True)
+    df_acidentes.to_csv('Arquivos/df_acidentes.csv', index=True, encoding='utf-8')
 
     df_vitimas = unir_arquivos('C:/Users/Public/Documents/Mestrado/Dados/RVT900')
     df_vitimas = vitimas_filtrar(df_vitimas)
@@ -298,6 +296,5 @@ if __name__ == "__main__":
     df_vitimas = ajustando_formatos(df_vitimas)
     df_vitimas = criando_index(df_vitimas)
     df_vitimas = vitimas_delete_colunas(df_vitimas)
-    df_vitimas['Faixa_Etaria']=df_vitimas['Idade'].apply(obter_idade)
 
-    df_vitimas.to_csv('Arquivos/df_vitimas.csv', index=True)
+    df_vitimas.to_csv('Arquivos/df_vitimas.csv', index=True, encoding='utf-8')
