@@ -128,7 +128,7 @@ def de_para_acidente (df):
     df.rename(columns={'TipoAcidente2': 'TipoAcidente'}, inplace=True)
 
     #Padronizar local
-    local = pd.read_csv('Arquivos/TipoLocal.csv', sep=",",
+    local = pd.read_csv('Arquivos/Local.csv', sep=",",
                          encoding="ISO-8859-1")
     df = pd.merge(df, local, on='strLocal', how='inner')
     df = df.loc[(df['Local2'] != 'Marginal') &
@@ -144,6 +144,12 @@ def de_para_acidente (df):
 
     #Padronizar descrição da ocorrencia
     df['DescrOcorrencia'] = df['DescrOcorrencia'].str.replace('*', '').str.strip()
+
+    #Padronizar não def
+    df['TracadoPista'].replace('Não Def', 'Reta', inplace=True)
+    df['CondicaoPista'].replace('Não Def', 'Seca', inplace=True)
+    df['PerfilPista'].replace('Não Def', 'Em Nivel', inplace=True)
+    df['CondicaoTempo'].replace(['Não Def', 'Não Ident', 'Nao Identificado'], 'Bom', inplace=True)
 
     return df
 
@@ -168,15 +174,19 @@ def alterar_acidente_bicicleta (df):
 
     return df
 
-def tratar_nao_def(df):
-    df['TracadoPista'].replace('Não Def', 'Reta', inplace=True)
 
-    df['CondicaoPista'].replace('Não Def', 'Seca', inplace=True)
+def incluir_qgis(df):
+    qgis = pd.read_csv('Arquivos/QGIS.csv')
 
-    df['PerfilPista'].replace('Não Def', 'Em Nivel', inplace=True)
+    df.rename(columns={'TracadoPista': 'TracadoPista_1', 'TipoLocal': 'TipoLocal_1'}, inplace=True)
+    df = pd.merge(df, qgis, how='left', on='OcDataConcessionaria')
 
-    df['CondicaoTempo'].replace(['Não Def', 'Não Ident', 'Nao Identificado'], 'Bom', inplace=True)
+    df['TracadoPista'] = df['TracadoPista'].fillna(df['TracadoPista_1'])
+    df['TipoLocal'] = df['TipoLocal'].fillna(df['TipoLocal_1'])
+
+    df.drop(columns=['TracadoPista_1', 'TipoLocal_1'], inplace=True)
     return df
+
 
 def definir_anos(df, year1, year2):
     df = df.loc[(df['Ano'] >= year1) & (df['Ano'] <= year2)]
@@ -191,8 +201,8 @@ def coluna_em_numeros(df):
     df['Concessionaria_1'] = df['Concessionaria'].replace(concessionaria).astype(int)
 
     rodovia = {'MG-BR381': 1,
-               'MG-CONT': 2,
-               'SP-BR381': 3,
+               'MG-CONT': 3,
+               'SP-BR381': 2,
                'BR101': 1,
                'BR116': 2,
                'BR376': 3,
@@ -205,6 +215,65 @@ def coluna_em_numeros(df):
     df['Rodovia_1'] = df['Rodovia'].replace(rodovia).astype(int)
 
     df['Sentido_1'] = df['Sentido'].replace('S', 1).replace('N', 2).astype(int)
+
+    return df
+
+def tipo_veiculo(df):
+    apoio_veiculos = df.copy()
+    apoio_veiculos = apoio_veiculos[['OcDataConcessionaria', 'Ano', 'Numveic', 'Veiculos']]
+    apoio_veiculos.drop(['Ano', 'Numveic'], inplace=True, axis=1)
+
+    palavra_moto = 'moto'
+    moto = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_moto, case=False)]
+    moto = moto.drop(columns=['Veiculos'])
+    moto['Motocicleta'] = True
+    df = pd.merge(df, moto, on='OcDataConcessionaria', how='left')
+
+
+    palavra_veic_leve = 'autom'
+    automovel = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_leve, case=False)]
+
+    palavra_veic_leve = 'caminhone'
+    caminhonete = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_leve, case=False)]
+
+    palavra_veic_leve = 'perua'
+    perua = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_leve, case=False)]
+
+    veic_leve = pd.concat([automovel, caminhonete, perua], axis=0, ignore_index=True)
+    veic_leve = veic_leve.drop(columns=['Veiculos'])
+    veic_leve = veic_leve.drop_duplicates(subset='OcDataConcessionaria')
+    veic_leve['Veiculo Leve'] = True
+    df = pd.merge(df, veic_leve, on='OcDataConcessionaria', how='left')
+
+
+    palavra_veic_pesado = 'caminhão'
+    caminhao = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_pesado, case=False)]
+
+    palavra_veic_pesado = 'carreta'
+    carreta = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_pesado, case=False)]
+
+    veic_pesado = pd.concat([caminhao, carreta], axis=0, ignore_index=True)
+    veic_pesado = veic_pesado.drop(columns='Veiculos')
+    veic_pesado = veic_pesado.drop_duplicates(subset='OcDataConcessionaria')
+    veic_pesado['Veiculo Pesado'] = True
+    df = pd.merge(df, veic_pesado, on='OcDataConcessionaria', how='left')
+
+
+    palavra_veic_onibus = 'Van'
+    van = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_onibus, case=False)]
+
+    palavra_veic_onibus = 'onibus'
+    onibus = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_onibus, case=False)]
+
+    veic_onibus = pd.concat([van, onibus], axis=0, ignore_index=True)
+    veic_onibus = veic_onibus.drop(columns=['Veiculos'])
+    veic_onibus = veic_onibus.drop_duplicates(subset='OcDataConcessionaria')
+    veic_onibus['Veiculo Passageiro'] = True
+    df = pd.merge(df, veic_onibus, on='OcDataConcessionaria', how='left')
+
+
+    colunas = ['Veiculo Leve', 'Motocicleta', 'Veiculo Pesado', 'Veiculo Passageiro']
+    df[colunas] = df[colunas].fillna(False)
 
     return df
 
@@ -280,7 +349,8 @@ if __name__ == "__main__":
     df_acidentes = ajustando_lat_lon(df_acidentes)
     df_acidentes = de_para_acidente(df_acidentes)
     df_acidentes = alterar_acidente_bicicleta(df_acidentes)
-    df_acidentes = tratar_nao_def(df_acidentes)
+    df_acidentes = incluir_qgis(df_acidentes)
+    df_acidentes = tipo_veiculo(df_acidentes)
     df_acidentes = definir_anos(df_acidentes, 2009, 2022)
 
     concessionaria = ['Litoral Sul', 'Fernão Dias', 'Régis Bittencourt', 'Planalto Sul', 'Fluminense']

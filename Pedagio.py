@@ -68,24 +68,27 @@ def calculo_volume(df):
     return df
 
 
-def previsao_dados_nulos(df):
+def previsao_dados_nulos(df, target_column):
     import numpy as np
     from sklearn.preprocessing import OneHotEncoder
     from sklearn.compose import ColumnTransformer
     from sklearn.pipeline import Pipeline
     from sklearn.linear_model import LinearRegression
 
-    dados = df[['ano', 'mes', 'concessionaria', 'sentido', 'praca', 'Volume_Equivalente']]
-    dados.loc[(dados['concessionaria'] == 'Litoral Sul') & (dados['praca'] == 'Praça 05') & (dados['ano'] == 2013) & (dados['Volume_Equivalente'] < 800), 'Volume_Equivalente'] = 0.0
-    dados.loc[(dados['concessionaria'] == 'Litoral Sul') & (dados['praca'] == 'Praça 05') & (dados['ano'] == 2014) & (dados['Volume_Equivalente'] < 800), 'Volume_Equivalente'] = 0.0
-    dados.loc[(dados['concessionaria'] == 'Fernão Dias') & (dados['praca'] == 'Praça 06') & (dados['ano'] == 2022) & (dados['Volume_Equivalente'] < 800), 'Volume_Equivalente'] = 0.0
-    dados['Volume_Equivalente'] = dados['Volume_Equivalente'].replace(0.0, np.nan)
+    dados = df[['ano', 'mes', 'concessionaria', 'sentido', 'praca', 'Volume_Equivalente', 'Volume_Total']]
+    dados = dados.replace(np.nan, 0.0)
+
+    dados.loc[(dados['concessionaria'] == 'Litoral Sul') & (dados['praca'] == 'Praça 05') & (dados['ano'] == 2013) & (dados[target_column] < 800), target_column] = 0.0
+    dados.loc[(dados['concessionaria'] == 'Litoral Sul') & (dados['praca'] == 'Praça 05') & (dados['ano'] == 2014) & (dados[target_column] < 800), target_column] = 0.0
+    dados.loc[(dados['concessionaria'] == 'Fernão Dias') & (dados['praca'] == 'Praça 06') & (dados['ano'] == 2022) & (dados[target_column] < 800), target_column] = 0.0
+    dados.loc[(dados['concessionaria'] == 'Fernão Dias') & (dados['praca'] == 'Praça 06') & (dados['ano'] == 2022) & (dados[target_column] < 200), target_column] = 0.0
+    dados[target_column] = dados[target_column].replace(0.0, np.nan)
 
     dados_treino = dados.dropna()
-    dados_teste = dados[dados['Volume_Equivalente'].isnull()]
+    dados_teste = dados[dados[target_column].isnull()]
 
     X_treino = dados_treino[['ano', 'mes', 'concessionaria', 'sentido', 'praca']]
-    y_treino = dados_treino['Volume_Equivalente']
+    y_treino = dados_treino[target_column]
     X_teste = dados_teste[['ano', 'mes', 'concessionaria', 'sentido', 'praca']]
 
     transformador = ColumnTransformer([('encoder', OneHotEncoder(), ['concessionaria', 'sentido', 'praca'])], remainder='passthrough')
@@ -95,12 +98,12 @@ def previsao_dados_nulos(df):
 
     previsoes = modelo.predict(X_teste)
 
-    dados.loc[dados['Volume_Equivalente'].isnull(), 'Volume_Equivalente'] = previsoes
+    dados.loc[dados[target_column].isnull(), target_column] = previsoes
 
     return dados
 
 
-def incluir_praca_acidentes(df):
+def incluir_pedagio_acidentes(df):
     df_praca = pd.read_csv('Arquivos/df_km_pracas.csv')
 
     df_auxiliar = df[['OcDataConcessionaria', 'Concessionaria', 'Ano', 'Mes', 'Rodovia', 'Sentido', 'kmmt']]
@@ -130,9 +133,7 @@ def uniao_volume_acidentes(df_pedagio, df):
     df['Mes_Ano'] = pd.to_datetime(df['Ano'].astype(str) + '-' + df['Mes'].astype(str), format='%Y-%m')
     df = df[['OcDataConcessionaria', 'Mes_Ano', 'Uniao', 'Praca_pedagio']]
 
-    df_pedagio['Uniao'] = df_pedagio['concessionaria'].astype(str) + '.' + df_pedagio['praca'].astype(str) + '.' + df_pedagio['ano'].astype(str) + '.' + df_pedagio['mes'].astype(str) + '.' + df_pedagio['sentido'].astype(str)
     df = pd.merge(df, df_auxiliar, on='Uniao', how='left')
-
 
     df.drop(columns=['Uniao'], axis=1, inplace=True)
 
@@ -142,17 +143,20 @@ def uniao_volume_acidentes(df_pedagio, df):
     return df_acidentes
 
 
+if __name__ == "__main__":
 
-df_pedagio = unir_arquivos('C:/Users/Public/Documents/Mestrado/Dados/Volume_Trafego')
-df_pedagio = tratamento_pracas_pedagio(df_pedagio)
-df_pedagio = calculo_volume(df_pedagio)
-#df_pedagio = previsao_dados_nulos(df_pedagio)
-
-df_acidentes = pd.read_csv('Arquivos/df_acidentes.csv')
-df_acidentes = incluir_praca_acidentes(df_acidentes)
-df_acidentes = uniao_volume_acidentes(df_pedagio, df_acidentes)
-
-df_acidentes.to_csv('Arquivos/df_acidentes_volume.csv', index=False, encoding='utf-8')
+    df_pedagio = unir_arquivos('C:/Users/Public/Documents/Mestrado/Dados/Volume_Trafego')
+    df_pedagio = tratamento_pracas_pedagio(df_pedagio)
+    df_pedagio = calculo_volume(df_pedagio)
+    df_pedagio = previsao_dados_nulos(df_pedagio, 'Volume_Equivalente')
+    df_pedagio = previsao_dados_nulos(df_pedagio, 'Volume_Total')
+    
+    df_acidentes = pd.read_csv('Arquivos/df_acidentes.csv')
+    df_acidentes = incluir_pedagio_acidentes(df_acidentes)
+    df_acidentes = uniao_volume_acidentes(df_pedagio, df_acidentes)
+    
+    df_acidentes.to_csv('Arquivos/df_acidentes_volume.csv', index=False, encoding='utf-8')
+    df_pedagio.to_csv('Arquivos/trafego_consolidado.csv', index=False, encoding='utf-8')
 
 
 

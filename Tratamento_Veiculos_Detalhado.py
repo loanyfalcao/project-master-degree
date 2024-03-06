@@ -155,11 +155,8 @@ if(__name__ == "__main__"):
     df_acidentes = pd.read_csv('Arquivos/df_acidentes.csv', sep=',', encoding='UTF-8')
 
     df_placa = Tratamento_Um_Veiculo.veiculo_por_linha(df_acidentes)
-
     df_placa = Tratamento_Um_Veiculo.tratar_erros_ano(df_placa)
-
     df_placa = Tratamento_Um_Veiculo.tratar_placa(df_placa)
-
     df_placa = Tratamento_Um_Veiculo.incluir_placas_api(df_placa, placas)
 
     df_placa['Ano_Veiculo'] = df_placa.apply(lambda row: tratar_ano(row), axis=1)
@@ -168,13 +165,9 @@ if(__name__ == "__main__"):
     df_placa.to_csv('Arquivos/df_placa.csv', sep=',', index=False, encoding='UTF-8')
 
     df_veiculos = colunas_tipo_veiculo(df_acidentes)
-
     df_veiculos = colunas_placas_ano(df_veiculos)
-
     #df_veiculos = alterar_ano(df_veiculos, df_placa)
-
     df_veiculos = contar_evasao(df_veiculos)
-
     #df_veiculos = retirar_vazios(df_veiculos)
 
     df_veiculos.to_csv('Arquivos/df_veiculo_detalhado.csv', sep=',', index=False, encoding='UTF-8')
