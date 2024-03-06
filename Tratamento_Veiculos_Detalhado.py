@@ -17,67 +17,6 @@ def incluir_placas_api(df, placas):
 
     return df
 
-
-def colunas_tipo_veiculo(df):
-
-    df = df[['OcDataConcessionaria', 'Ano', 'Numveic', 'Veiculos']]
-    apoio_veiculos = df.copy()
-    apoio_veiculos.drop(['Ano', 'Numveic'], inplace=True, axis=1)
-
-    palavra_moto = 'moto'
-    moto = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_moto, case=False)]
-    moto = moto.drop(columns=['Veiculos'])
-    moto['Motocicleta'] = True
-    df = pd.merge(df, moto, on='OcDataConcessionaria', how='left')
-
-
-    palavra_veic_leve = 'autom'
-    automovel = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_leve, case=False)]
-
-    palavra_veic_leve = 'caminhone'
-    caminhonete = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_leve, case=False)]
-
-    palavra_veic_leve = 'perua'
-    perua = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_leve, case=False)]
-
-    veic_leve = pd.concat([automovel, caminhonete, perua], axis=0, ignore_index=True)
-    veic_leve = veic_leve.drop(columns=['Veiculos'])
-    veic_leve = veic_leve.drop_duplicates(subset='OcDataConcessionaria')
-    veic_leve['Veiculo Leve'] = True
-    df = pd.merge(df, veic_leve, on='OcDataConcessionaria', how='left')
-
-
-    palavra_veic_pesado = 'caminhão'
-    caminhao = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_pesado, case=False)]
-
-    palavra_veic_pesado = 'carreta'
-    carreta = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_pesado, case=False)]
-
-    veic_pesado = pd.concat([caminhao, carreta], axis=0, ignore_index=True)
-    veic_pesado = veic_pesado.drop(columns='Veiculos')
-    veic_pesado = veic_pesado.drop_duplicates(subset='OcDataConcessionaria')
-    veic_pesado['Veiculo Pesado'] = True
-    df = pd.merge(df, veic_pesado, on='OcDataConcessionaria', how='left')
-
-
-    palavra_veic_onibus = 'Van'
-    van = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_onibus, case=False)]
-
-    palavra_veic_onibus = 'onibus'
-    onibus = apoio_veiculos[apoio_veiculos['Veiculos'].str.contains(palavra_veic_onibus, case=False)]
-
-    veic_onibus = pd.concat([van, onibus], axis=0, ignore_index=True)
-    veic_onibus = veic_onibus.drop(columns=['Veiculos'])
-    veic_onibus = veic_onibus.drop_duplicates(subset='OcDataConcessionaria')
-    veic_onibus['Veiculo Passageiro'] = True
-    df = pd.merge(df, veic_onibus, on='OcDataConcessionaria', how='left')
-
-
-    colunas = ['Veiculo Leve', 'Motocicleta', 'Veiculo Pesado', 'Veiculo Passageiro']
-    df[colunas] = df[colunas].fillna(False)
-
-    return df
-
 def colunas_placas_ano(df):
 
     df = df[['Ano', 'OcDataConcessionaria', 'Numveic', 'Veiculos']]
@@ -164,8 +103,7 @@ if(__name__ == "__main__"):
 
     df_placa.to_csv('Arquivos/df_placa.csv', sep=',', index=False, encoding='UTF-8')
 
-    df_veiculos = colunas_tipo_veiculo(df_acidentes)
-    df_veiculos = colunas_placas_ano(df_veiculos)
+    df_veiculos = colunas_placas_ano(df_acidentes)
     #df_veiculos = alterar_ano(df_veiculos, df_placa)
     df_veiculos = contar_evasao(df_veiculos)
     #df_veiculos = retirar_vazios(df_veiculos)
