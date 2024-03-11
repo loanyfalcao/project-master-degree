@@ -89,7 +89,7 @@ def retirar_vazios (df):
 
 if(__name__ == "__main__"):
 
-    placas = pd.read_csv('Arquivos/placas_api.csv', sep=',', encoding='UTF-8')
+    placas = pd.read_csv('Arquivos/Base/placas_api.csv', sep=',', encoding='UTF-8')
 
     df_acidentes = pd.read_csv('Arquivos/df_acidentes.csv', sep=',', encoding='UTF-8')
 

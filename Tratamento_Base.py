@@ -116,20 +116,13 @@ def obter_estacao(data):
         return 'Verão'
 
 def de_para_acidente (df):
-    '''
-    acidente=pd.DataFrame()
-    acidente['TipoAcidente']=df['TipoAcidente'].unique()
-    acidente.to_csv("Arquivos/TipoAcidente.csv", encoding = "ISO-8859-1", index = False)
-    '''
-    acidente = pd.read_csv('Arquivos/TipoAcidente.csv', sep=",",
-                           encoding="ISO-8859-1")
+    acidente = pd.read_csv('Arquivos/Base/TipoAcidente.csv', sep=",", encoding="ISO-8859-1")
     df = pd.merge(df, acidente, on='TipoAcidente', how='inner')
     df.drop(columns=['TipoAcidente'], inplace=True)
     df.rename(columns={'TipoAcidente2': 'TipoAcidente'}, inplace=True)
 
     #Padronizar local
-    local = pd.read_csv('Arquivos/Local.csv', sep=",",
-                         encoding="ISO-8859-1")
+    local = pd.read_csv('Arquivos/Base/Local.csv', sep=",", encoding="ISO-8859-1")
     df = pd.merge(df, local, on='strLocal', how='inner')
     df = df.loc[(df['Local2'] != 'Marginal') &
                 (df['Local2'] != 'Base Operacional') &
@@ -176,7 +169,7 @@ def alterar_acidente_bicicleta (df):
 
 
 def incluir_qgis(df):
-    qgis = pd.read_csv('Arquivos/QGIS.csv')
+    qgis = pd.read_csv('Arquivos/Base/QGIS.csv')
 
     df.rename(columns={'TracadoPista': 'TracadoPista_1', 'TipoLocal': 'TipoLocal_1'}, inplace=True)
     df = pd.merge(df, qgis, how='left', on='OcDataConcessionaria')
@@ -242,7 +235,7 @@ def tipo_veiculo(df):
     veic_leve = pd.concat([automovel, caminhonete, perua], axis=0, ignore_index=True)
     veic_leve = veic_leve.drop(columns=['Veiculos'])
     veic_leve = veic_leve.drop_duplicates(subset='OcDataConcessionaria')
-    veic_leve['Veiculo Leve'] = True
+    veic_leve['Veiculo_Leve'] = True
     df = pd.merge(df, veic_leve, on='OcDataConcessionaria', how='left')
 
 
@@ -255,7 +248,7 @@ def tipo_veiculo(df):
     veic_pesado = pd.concat([caminhao, carreta], axis=0, ignore_index=True)
     veic_pesado = veic_pesado.drop(columns='Veiculos')
     veic_pesado = veic_pesado.drop_duplicates(subset='OcDataConcessionaria')
-    veic_pesado['Veiculo Pesado'] = True
+    veic_pesado['Veiculo_Pesado'] = True
     df = pd.merge(df, veic_pesado, on='OcDataConcessionaria', how='left')
 
 
@@ -268,11 +261,11 @@ def tipo_veiculo(df):
     veic_onibus = pd.concat([van, onibus], axis=0, ignore_index=True)
     veic_onibus = veic_onibus.drop(columns=['Veiculos'])
     veic_onibus = veic_onibus.drop_duplicates(subset='OcDataConcessionaria')
-    veic_onibus['Veiculo Passageiro'] = True
+    veic_onibus['Veiculo_Passageiro'] = True
     df = pd.merge(df, veic_onibus, on='OcDataConcessionaria', how='left')
 
 
-    colunas = ['Veiculo Leve', 'Motocicleta', 'Veiculo Pesado', 'Veiculo Passageiro']
+    colunas = ['Veiculo_Leve', 'Motocicleta', 'Veiculo_Pesado', 'Veiculo_Passageiro']
     df[colunas] = df[colunas].fillna(False)
 
     return df
