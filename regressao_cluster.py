@@ -1,7 +1,33 @@
 import pandas as pd
 import numpy as np
 from sklearn.cluster import DBSCAN
-import Tratamento_Base
+import tratamento_base
+
+
+def coluna_em_numeros(df):
+    concessionaria = {'Fernão Dias': 1,
+                      'Litoral Sul': 2,
+                      'Régis Bittencourt': 3,
+                      'Planalto Sul': 4,
+                      'Fluminense': 5}
+    df['Concessionaria_1'] = df['Concessionaria'].replace(concessionaria).astype(int)
+
+    rodovia = {'MG-BR381': 1,
+               'MG-CONT': 3,
+               'SP-BR381': 2,
+               'BR101': 1,
+               'BR116': 2,
+               'BR376': 3,
+               'CW-BR116': 1,
+               'PR-BR116': 2,
+               'SP-BR116': 3,
+               'BR 101': 1,
+               'BR116/PR': 1,
+               'BR116/SC': 2}
+    df['Rodovia_1'] = df['Rodovia'].replace(rodovia).astype(int)
+
+    df['Sentido_1'] = df['Sentido'].replace('S', 1).replace('N', 2).astype(int)
+    return df
 
 def desvio_padrao(df, valor_minimo=50, valor_maximo=200):
 
@@ -66,7 +92,6 @@ def desvio_padrao(df, valor_minimo=50, valor_maximo=200):
 
 
 def modelo_DBSCAN(df):
-    from sklearn.cluster import DBSCAN
 
     df['CssRodSentido'] = df.apply(lambda x: '%s.%s.%s' % (x['Concessionaria'], x['Rodovia'], x['Sentido']), axis=1)
     concessionaria = df['Concessionaria_1'].unique()
@@ -119,7 +144,7 @@ def modelo_DBSCAN(df):
 
                 df2['CLUSTERS_DBSCAN'] = df2.apply(lambda row: resumo.loc[(resumo.CssRodSentido == row['CssRodSentido']) & (row['kmmt'] >= resumo.kmmin) &(row['kmmt'] < resumo.kmmax), 'CLUSTERS_DBSCAN'].values[0] if not resumo.loc[(resumo.CssRodSentido == row['CssRodSentido']) & (row['kmmt'] >= resumo.kmmin) & (row['kmmt'] < resumo.kmmax), 'CLUSTERS_DBSCAN'].empty else None, axis=1)
 
-                df2.drop(["CssRodSentido", "Sentido_1", "Rodovia_1","Concessionaria_1", "UPS"], axis=1, inplace=True)
+                df2.drop(["CssRodSentido", "Sentido_1", "Rodovia_1", "Concessionaria_1"], axis=1, inplace=True)
                 df2.reset_index(inplace=True)
 
                 acidentes_total = pd.concat([acidentes_total, df2], axis=0, ignore_index=True)
@@ -131,6 +156,9 @@ def modelo_DBSCAN(df):
 
 
 def cluster_comparativo(df_base, df_ano_1, df_ano_2):
+
+    df_base['CssRodSentido'] = df_base.apply(lambda x: '%s.%s.%s' % (x['Concessionaria'], x['Rodovia'], x['Sentido']), axis=1)
+    concessionaria = df_base['Concessionaria_1'].unique()
     resumo_total = pd.DataFrame()
     df_total = pd.DataFrame()
     ultimo_DBSCAN = 0
@@ -222,7 +250,9 @@ def cluster_comparativo(df_base, df_ano_1, df_ano_2):
 
 
 if __name__ == "__main__":
-    df_acidentes = pd.read_csv('Arquivos/Logit/df_vitimas_acidentes_volume_2_2018-2022.csv', encoding='utf-8', sep=',')
+    df_acidentes = pd.read_csv('Arquivos/df_acidentes_volume.csv', encoding='utf-8', sep=',')
+    df_acidentes.query('DescrOcorrencia != "Acidente com Danos Materiais"', inplace=True)
+    df_acidentes = coluna_em_numeros(df_acidentes)
 
     '''
     #Avaliar o desvio padrão
@@ -232,24 +262,23 @@ if __name__ == "__main__":
 
     #Modelo Cluster
     resumo_total, acidente_total = modelo_DBSCAN(df_acidentes)
-    acidente_total.drop(columns=['Unnamed: 0', 'DescrOcorrencia', 'Sentido', 'Rodovia', 'CondicaoTempo', 'Latitude', 'Longitude', 'kmmt', 'Mes_Ano', 'Praca_pedagio', 'FaixaEtaria_Não Informado'], inplace=True)
 
     acidente_total['Cluster'] = np.where(acidente_total['CLUSTERS_DBSCAN'].notna(), True, False)
-    resumo_total.to_csv('Arquivos/Cluster/df_vitimas_acidentes_volume_2_2018-2022.csv', encoding='UTF-8', sep=',', index=False)
-    acidente_total.to_csv('Arquivos/Cluster/resumo_vitimas_acidentes_volume_2_2018-2022.csv', encoding='UTF-8', sep=',', index=False)
+    resumo_total.to_csv('Arquivos/Cluster/resumo_acidentes_volume.csv', encoding='latin1', index=False)
+    acidente_total.to_csv('Arquivos/Cluster/df_acidentes_volume.csv', encoding='latin1', index=False)
 
     '''
     #Modelo Cluster Comparativo
     df_cluster = df_acidentes.copy()
     df_cluster['CssRodSentido'] = df_cluster.apply(lambda row: '%s.%s.%s' % (row['Concessionaria'],row['Rodovia'],row['Sentido']), axis=1)
     
-    df_base = Tratamento_Base.definir_anos(df_cluster, 2010, 2014)
+    df_base = tratamento_base.definir_anos(df_cluster, 2010, 2014)
     df_base.loc[:, 'Cluster_Ref'] = 'Ano_Base'
     
-    df_ano_1 = Tratamento_Base.definir_anos(df_cluster, 2015, 2018)
+    df_ano_1 = tratamento_base.definir_anos(df_cluster, 2015, 2018)
     df_ano_1.loc[:, 'Cluster_Ref'] = 'Ano_1'
     
-    df_ano_2 = Tratamento_Base.definir_anos(df_cluster, 2019, 2022)
+    df_ano_2 = tratamento_base.definir_anos(df_cluster, 2019, 2022)
     df_ano_2.loc[:, 'Cluster_Ref'] = 'Ano_2'
     
     resumo_total, cluster_total = cluster_comparativo(df_base, df_ano_1, df_ano_2)

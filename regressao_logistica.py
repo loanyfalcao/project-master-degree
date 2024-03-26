@@ -53,7 +53,7 @@ if __name__ == '__main__':
     import statsmodels.stats.diagnostic as smd
     from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-    dados = pd.read_csv('Arquivos/Cluster/resumo_vitimas_acidentes_volume_2_2018-2022.csv', encoding="UTF-8")
+    dados = pd.read_csv('Arquivos/Cluster/resumo_vitimas_acidentes_volume_2_2010m-2022.csv', encoding="UTF-8")
 
     dados = dados[
         ['Gravidade', 'PosicaoVitima', 'Sexo', 'Faixa_Etaria', 'CondicaoPista', 'PerfilPista', 'Estacao', 'Período',

@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 
+
 def veiculo_por_linha(df):
 
     df = df[['OcDataConcessionaria', 'Ano', 'Veiculos']]
@@ -12,6 +13,7 @@ def veiculo_por_linha(df):
     df.rename(columns={'Ano': 'Ano_Acidente', 'Veiculos': 'Veiculo_Unico'}, inplace=True)
 
     return df
+
 
 def tratar_erros_ano(df):
 
@@ -30,6 +32,7 @@ def tratar_erros_ano(df):
 
     return df
 
+
 def tratar_placa(df):
     df['Placa'] = df['Veiculo_Unico'].str.extract(r':(.*?)-')
     df['Placa'].replace('', np.nan, inplace=True)
@@ -37,8 +40,8 @@ def tratar_placa(df):
     df['Placa'] = df['Placa'].mask((df['Contagem_Caracteres'] < 7), np.nan)
     df['Placa'].replace(['', '0000000'], np.nan, inplace=True)
     df.drop('Contagem_Caracteres', axis=1, inplace=True)
-
     return df
+
 
 def apenas_veiculo_com_informacoes(df):
     df = df.loc[(df['Ano_Veiculo'].notna()) | (df['Placa'].notna())]
@@ -49,15 +52,11 @@ def apenas_veiculo_com_informacoes(df):
 
     return df
 
+
 def classificar_tipo_veiculo(df):
-
-
     df['Tipo_Veiculo'] = df['Veiculo_Unico'].str.extract(r'^(.*?)(?=\()')
-
     df['Marca_Veiculo'] = df['Veiculo_Unico'].str.extract(r'\((.*?)\/')
-
     df['Modelo_Veiculo'] = df['Veiculo_Unico'].str.extract(r'/(.*?):')
-
     df['Tipo_Veiculo'] = (df['Tipo_Veiculo'].replace(['AUTomovel', 'Perua/Caminhonete/Camioneta'], 'Veiculo Leve').
                            replace(['MOTocicleta', 'MOTo Frete'], 'Motocicleta').
                            replace(['CAMinhão', 'CARreta'], 'Veiculo Pesado').
@@ -66,6 +65,7 @@ def classificar_tipo_veiculo(df):
                            replace('Trator', 'Outros').replace('Evadiu-se', 'Outros'))
 
     return df
+
 
 def incluir_placas_api(df, placas):
 
@@ -81,6 +81,7 @@ def incluir_placas_api(df, placas):
     df.rename(columns={'Ano':'Ano_Placa'}, inplace=True)
 
     return df
+
 
 def tratar_ano(row):
 
@@ -112,6 +113,7 @@ def tratar_ano(row):
     else:
         return None
 
+
 def obter_idade_veiculo(idade):
     if 0 <= idade <= 5:
         return '0-5 anos'
@@ -124,22 +126,16 @@ def obter_idade_veiculo(idade):
     else:
         return 'Não Informado'
 
-if(__name__ == "__main__"):
 
+if __name__ == "__main__":
     placas = pd.read_csv('Arquivos/Base/placas_api.csv', sep=',', encoding='UTF-8')
-
-    df_acidentes = pd.read_csv('Arquivos/df_acidentes.csv', sep=',', encoding='UTF-8')
+    df_acidentes = pd.read_csv('Arquivos/df_acidentes_volume.csv', sep=',', encoding='UTF-8')
 
     df_veiculos = veiculo_por_linha(df_acidentes)
-
     df_veiculos = tratar_erros_ano(df_veiculos)
-
     df_veiculos = tratar_placa(df_veiculos)
-
     df_veiculos = apenas_veiculo_com_informacoes(df_veiculos)
-
     df_veiculos = classificar_tipo_veiculo(df_veiculos)
-
     df_veiculos = incluir_placas_api(df_veiculos,placas)
     df_veiculos['Modelo_Veiculo'] = df_veiculos.apply(lambda row: row['Modelo'] if (pd.notna(row['Modelo']) and row['Modelo'] != '') else row['Modelo_Veiculo'],axis=1)
 

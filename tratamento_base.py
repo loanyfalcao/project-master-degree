@@ -23,34 +23,36 @@ def unir_arquivos (url):
     return df
 
 def acidentes_delete_colunas(df):
-    colunas_excluir = ['grupo','ncontrole','TipoOcorrencia','TipoAcidenteSub1', 'TipoAcidenteSub2', 'CausaProvavel', 'NumBO', 'Origem', 'CidadeV1', 'CidadeV2','CidadeV3','CidadeVx','NaoInfo','RecursosAcionados','ProvidenciasTomadas', 'DescricaoAcidente', 'Obs', 'CondicaoEspecial','CondicaoVisibilidade','Unnamed: 45']
+    colunas_excluir = ['grupo', 'ncontrole', 'TipoOcorrencia', 'TipoAcidenteSub1', 'TipoAcidenteSub2', 'CausaProvavel', 'NumBO', 'Origem', 'CidadeV1', 'CidadeV2','CidadeV3','CidadeVx','NaoInfo','RecursosAcionados','ProvidenciasTomadas', 'DescricaoAcidente', 'Obs', 'CondicaoEspecial','CondicaoVisibilidade', 'CondicaoTempo', 'Latitude', 'Longitude', 'Unnamed: 45', 'TipoPista']
     df.drop(colunas_excluir, axis=1, errors='ignore', inplace=True)
     return df
 
-def tratar_concessionaria (df):
+
+def tratar_concessionaria(df):
     if "Concessionária" in df.columns:
         df.rename(columns={'Concessionária': 'Concessionaria'}, inplace=True)
-    concessionaria = {'ARTERIS FLUMINENSE':'Fluminense',
-                      'INTERVIAS':'Intervias',
-                      'Arteris Planalto Sul':'Planalto Sul',
-                      'Arteris Fernão Dias':'Fernão Dias',
-                      'Arteris Litoral Sul':'Litoral Sul',
+    concessionaria = {'ARTERIS FLUMINENSE': 'Fluminense',
+                      'INTERVIAS': 'Intervias',
+                      'Arteris Planalto Sul': 'Planalto Sul',
+                      'Arteris Fernão Dias': 'Fernão Dias',
+                      'Arteris Litoral Sul': 'Litoral Sul',
                       'Auto Pista Regis': 'Régis Bittencourt',
-                      'VIAPAULISTA':'ViaPaulista'}
+                      'VIAPAULISTA': 'ViaPaulista'}
     df['Concessionaria'].replace(concessionaria, inplace=True)
 
     return df
 
+
 def tratar_duplicadas(df):
-    df['DataOcorrencia'] = df['DataOcorrencia'].dt.date
+    df['DataOcorrencia'] = pd.to_datetime(df['DataOcorrencia']).dt.date
     df['OcDataConcessionaria'] = df.apply(
         lambda row: '%s.%s.%s' %(row['NumOcorrencia'], row['DataOcorrencia'], row['Concessionaria']), axis=1)
     df.drop_duplicates(subset='OcDataConcessionaria', inplace=True)
-    df.reset_index(drop=True, inplace=True)
     return df
 
+
 def ajustando_formatos(df):
-    coluna = ['km', 'mt', 'Latitude','Longitude']
+    coluna = ['km', 'mt']
     df[coluna] = df[coluna].astype(float)
     df = df.dropna(subset=['NumOcorrencia'])
     df['NumOcorrencia'] = df['NumOcorrencia'].astype(int)
@@ -59,8 +61,8 @@ def ajustando_formatos(df):
 
     return df
 
-def incluir_colunas(df):
 
+def incluir_colunas(df):
     df.loc[df['DescrOcorrencia'] == 'Acidente com Danos Materiais', 'UPS'] = 1
     df.loc[(df['DescrOcorrencia'] == 'Acidente com VITIMA') & (df['TipoAcidente'] != 'Atropelamento - Pedestre'), 'UPS'] = 4
     df.loc[(df['DescrOcorrencia'] == 'Acidente com VITIMA') & (df['TipoAcidente'] == 'Atropelamento - Pedestre'), 'UPS'] = 6
@@ -75,34 +77,30 @@ def incluir_colunas(df):
     df['Ano'] = pd.DatetimeIndex(df['DataOcorrencia']).year.astype(int)
     df['Mes'] = pd.DatetimeIndex(df['DataOcorrencia']).month.astype(int)
 
-
     # Periodo dia
     df.dropna(subset=['Hora'], inplace=True)
     inicio_noite = datetime.strptime('18:00:00', '%H:%M:%S')
     fim_noite = datetime.strptime('06:00:00', '%H:%M:%S')
 
     df['Período'] = df['Hora'].apply(lambda x: 'Noite' if (x.time() >= inicio_noite.time() or x.time() < fim_noite.time()) else 'Dia')
+    df = df.drop(columns='Hora', axis=1)
     return df
+
 
 def ajustando_lat_lon(df):
-    df['kmRodoviaConcessionaria'] = df.apply(
-        lambda row: '%s.%s.%s' % (row['kmmt'], row['Rodovia'], row['Concessionaria']), axis=1)
+    unico_km = pd.read_csv('Arquivos/Base/Latitude-Longitude.csv', encoding='latin-1', index_col=None)
+    unico_km.drop(columns=['Concessionaria', 'kmmt', 'Rodovia'], axis=1, inplace=True)
 
-    unico_km = df[['kmRodoviaConcessionaria', 'Longitude', 'Latitude']]
-    unico_km = unico_km.drop_duplicates(subset='kmRodoviaConcessionaria')
-    unico_km.reset_index(drop=True, inplace=True)
+    df.loc[(df['Concessionaria'] == 'Litoral Sul') & (df['kmmt'] == 682.5), 'kmmt'] = 681.1
 
-    unico_km = unico_km.query('Latitude < 0')
-    unico_km.rename(columns={'Latitude': 'Latitude_2', 'Longitude': 'Longitude_2'}, inplace=True)
+    df['ConcessionariaRodoviakm'] = df.apply(
+        lambda row: '%s.%s.%s' % (row['Concessionaria'], row['Rodovia'], row['kmmt']), axis=1)
 
-    df = pd.merge(df, unico_km, on='kmRodoviaConcessionaria', how='left', right_index=False)
-    df.loc[df['Latitude'] == 0, 'Latitude'] = df['Latitude_2']
-    df.loc[df['Longitude'] == 0, 'Longitude'] = df['Longitude_2']
-
-    df.drop(['Latitude_2', 'Longitude_2', 'kmRodoviaConcessionaria'], axis=1, inplace=True)
-
-    df = df.dropna(subset=['Longitude','Latitude'], axis=0)
+    df = pd.merge(df, unico_km, on='ConcessionariaRodoviakm', how='left', right_index=False)
+    df.drop(['ConcessionariaRodoviakm'], axis=1, inplace=True)
+    df.dropna(subset=['Longitude', 'Latitude'], inplace=True)
     return df
+
 
 def obter_estacao(data):
     mes = data.month
@@ -115,14 +113,15 @@ def obter_estacao(data):
     else:
         return 'Verão'
 
-def de_para_acidente (df):
-    acidente = pd.read_csv('Arquivos/Base/TipoAcidente.csv', sep=",", encoding="ISO-8859-1")
+
+def de_para_acidente(df):
+    acidente = pd.read_csv('Arquivos/Base/TipoAcidente.csv', sep=",", encoding="ISO-8859-1", index_col=None)
     df = pd.merge(df, acidente, on='TipoAcidente', how='inner')
     df.drop(columns=['TipoAcidente'], inplace=True)
     df.rename(columns={'TipoAcidente2': 'TipoAcidente'}, inplace=True)
 
     #Padronizar local
-    local = pd.read_csv('Arquivos/Base/Local.csv', sep=",", encoding="ISO-8859-1")
+    local = pd.read_csv('Arquivos/Base/Local.csv', sep=",", encoding="ISO-8859-1", index_col=None)
     df = pd.merge(df, local, on='strLocal', how='inner')
     df = df.loc[(df['Local2'] != 'Marginal') &
                 (df['Local2'] != 'Base Operacional') &
@@ -142,14 +141,14 @@ def de_para_acidente (df):
     df['TracadoPista'].replace('Não Def', 'Reta', inplace=True)
     df['CondicaoPista'].replace('Não Def', 'Seca', inplace=True)
     df['PerfilPista'].replace('Não Def', 'Em Nivel', inplace=True)
-    df['CondicaoTempo'].replace(['Não Def', 'Não Ident', 'Nao Identificado'], 'Bom', inplace=True)
 
     return df
+
 
 def alterar_acidente_bicicleta (df):
 
     df.dropna(subset=['Veiculos'], inplace=True)
-    auxiliar = df[['Veiculos','TipoAcidente']]
+    auxiliar = df[['Veiculos', 'TipoAcidente']]
 
     palavra = 'bicicleta'
     tipoac = auxiliar[auxiliar['Veiculos'].str.contains(palavra, case=False)]
@@ -169,7 +168,7 @@ def alterar_acidente_bicicleta (df):
 
 
 def incluir_qgis(df):
-    qgis = pd.read_csv('Arquivos/Base/QGIS.csv')
+    qgis = pd.read_csv('Arquivos/Base/QGIS.csv', index_col=None)
 
     df.rename(columns={'TracadoPista': 'TracadoPista_1', 'TipoLocal': 'TipoLocal_1'}, inplace=True)
     df = pd.merge(df, qgis, how='left', on='OcDataConcessionaria')
@@ -183,32 +182,6 @@ def incluir_qgis(df):
 
 def definir_anos(df, year1, year2):
     df = df.loc[(df['Ano'] >= year1) & (df['Ano'] <= year2)]
-    return df
-
-def coluna_em_numeros(df):
-    concessionaria = {'Fernão Dias': 1,
-                      'Litoral Sul': 2,
-                      'Régis Bittencourt': 3,
-                      'Planalto Sul': 4,
-                      'Fluminense': 5}
-    df['Concessionaria_1'] = df['Concessionaria'].replace(concessionaria).astype(int)
-
-    rodovia = {'MG-BR381': 1,
-               'MG-CONT': 3,
-               'SP-BR381': 2,
-               'BR101': 1,
-               'BR116': 2,
-               'BR376': 3,
-               'CW-BR116': 1,
-               'PR-BR116': 2,
-               'SP-BR116': 3,
-               'BR 101': 1,
-               'BR116/PR': 1,
-               'BR116/SC': 2}
-    df['Rodovia_1'] = df['Rodovia'].replace(rodovia).astype(int)
-
-    df['Sentido_1'] = df['Sentido'].replace('S', 1).replace('N', 2).astype(int)
-
     return df
 
 def tipo_veiculo(df):
@@ -270,17 +243,14 @@ def tipo_veiculo(df):
 
     return df
 
-def vitimas_delete_colunas(df):
-    colunas_a_manter = ['Concessionaria', 'NumVitima', 'NumOcorrencia', 'DataOcorrencia', 'DescrOcorrencia', 'PosicaoVitima', 'Sexo', 'Idade', 'Gravidade', 'Faixa_Etaria']
-    return df.loc[:, colunas_a_manter]
 
-def vitimas_filtrar(df):
-
+def vitimas_tipo_acidente(df):
     df['DescrOcorrencia'] = df['DescrOcorrencia'].str.replace('\*', '', regex=True)
     condicao = df['DescrOcorrencia'].isin(['Acidente com VITIMA', 'Acidente com Vitima Fatal', 'Acidente com Danos Materiais'])
     df = df[condicao]
 
     return df
+
 
 def obter_idade(idade):
     if 1 <= idade <= 17:
@@ -296,24 +266,13 @@ def obter_idade(idade):
     else:
         return 'Não Informado'
 
+
 def de_para_vitimas(df):
-    '''
-    df_ejetada = df[['AVitimaEstava']]
-    df_ejetada = df_ejetada.dropna(subset=['AVitimaEstava'])
-    df_ejetada =df_ejetada.drop_duplicates(subset='AVitimaEstava')
-
-    palavra = 'ejetada'
-    ejetada = df_ejetada[df_ejetada['AVitimaEstava'].str.contains(palavra, case=False)]
-    ejetada ['Ejetada'] = True
-    df = pd.merge(df, ejetada, on='AVitimaEstava', how='left')
-    df['Ejetada'] = df['Ejetada'].replace (np.nan,False)
-    '''
-
     df['Sexo'] = df['Sexo'].replace('NI', 'M')
 
-    df['PosicaoVitima'] = df['PosicaoVitima'].replace(['Piloto','Condutor'], 'Condutor')
-    df['PosicaoVitima'] = df['PosicaoVitima'].replace(['Outros','Ignorado','Caçamba','Cadeirinha','Atrás do motorista','Atrás do acompanhante','Acompanhante','Garupa',np.nan], 'Passageiro')
-    df['PosicaoVitima'] = df['PosicaoVitima'].replace(['Bicicleta','Pedestre'], 'Bicicleta/Pedestre')
+    df['PosicaoVitima'] = df['PosicaoVitima'].replace(['Piloto', 'Condutor'], 'Condutor')
+    df['PosicaoVitima'] = df['PosicaoVitima'].replace(['Outros', 'Ignorado', 'Caçamba', 'Cadeirinha', 'Atrás do motorista', 'Atrás do acompanhante', 'Acompanhante', 'Garupa', np.nan], 'Passageiro')
+    df['PosicaoVitima'] = df['PosicaoVitima'].replace(['Bicicleta', 'Pedestre'], 'Bicicleta/Pedestre')
 
     df['Gravidade'].replace('Não Informado', 'Ileso', inplace=True)
 
@@ -322,20 +281,28 @@ def de_para_vitimas(df):
         0 if (row['Idade'] <= 15 and row['PosicaoVitima'] == 'Condutor') else row['Idade']), axis=1)
 
     df['Faixa_Etaria'] = df['Idade'].apply(obter_idade)
-
     return df
 
-def criando_index(df):
-    df['DataOcorrencia'] = df['DataOcorrencia'].dt.date
-    df['OcDataConcessionaria'] = df.apply(lambda x: '%s.%s.%s' % (x['NumOcorrencia'], x['DataOcorrencia'], x['Concessionaria']), axis=1)
-    df.set_index(['OcDataConcessionaria'], inplace=True)
+
+def coluna_unica(df):
+    df['DataOcorrencia'] = pd.to_datetime(df['DataOcorrencia']).dt.date
+    df['OcDataConcessionaria'] = df.apply(lambda x: '%s.%s.%s' %(x['NumOcorrencia'], x['DataOcorrencia'], x['Concessionaria']), axis=1)
     return df
+
+
+def vitimas_delete_colunas(df):
+    colunas_a_manter = ['OcDataConcessionaria', 'Concessionaria', 'NumVitima', 'NumOcorrencia', 'DataOcorrencia', 'DescrOcorrencia', 'PosicaoVitima', 'Sexo', 'Idade', 'Gravidade', 'Faixa_Etaria']
+    return df.loc[:, colunas_a_manter]
+
 
 if __name__ == "__main__":
 
     df_acidentes = unir_arquivos('C:/Users/Public/Documents/Mestrado/Dados/Acidentes/CSV')
     df_acidentes = acidentes_delete_colunas(df_acidentes)
     df_acidentes = tratar_concessionaria(df_acidentes)
+    concessionaria = ['Litoral Sul', 'Fernão Dias', 'Régis Bittencourt']
+    df_acidentes = df_acidentes[df_acidentes['Concessionaria'].isin(concessionaria)]
+
     df_acidentes = ajustando_formatos(df_acidentes)
     df_acidentes = tratar_duplicadas(df_acidentes)
     df_acidentes = incluir_colunas(df_acidentes)
@@ -345,19 +312,16 @@ if __name__ == "__main__":
     df_acidentes = incluir_qgis(df_acidentes)
     df_acidentes = tipo_veiculo(df_acidentes)
     df_acidentes = definir_anos(df_acidentes, 2009, 2022)
+    #df_acidentes = coluna_em_numeros(df_acidentes)
 
-    concessionaria = ['Litoral Sul', 'Fernão Dias', 'Régis Bittencourt', 'Planalto Sul', 'Fluminense']
-    df_acidentes = df_acidentes[df_acidentes['Concessionaria'].isin(concessionaria)]
-    df_acidentes = coluna_em_numeros(df_acidentes)
-
-    df_acidentes.to_csv('Arquivos/df_acidentes.csv', index=True, encoding='utf-8')
+    df_acidentes.to_csv('Arquivos/df_acidentes.csv', index=False, encoding='utf-8')
 
     df_vitimas = unir_arquivos('C:/Users/Public/Documents/Mestrado/Dados/RVT900')
-    df_vitimas = vitimas_filtrar(df_vitimas)
+    df_vitimas = vitimas_tipo_acidente(df_vitimas)
     df_vitimas = de_para_vitimas(df_vitimas)
     df_vitimas = tratar_concessionaria(df_vitimas)
     df_vitimas = ajustando_formatos(df_vitimas)
-    df_vitimas = criando_index(df_vitimas)
+    df_vitimas = coluna_unica(df_vitimas)
     df_vitimas = vitimas_delete_colunas(df_vitimas)
 
-    df_vitimas.to_csv('Arquivos/df_vitimas.csv', index=True, encoding='utf-8')
+    df_vitimas.to_csv('Arquivos/df_vitimas.csv', index=False, encoding='utf-8')

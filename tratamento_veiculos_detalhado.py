@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-import Tratamento_Um_Veiculo
+import tratamento_um_veiculo
 
 def incluir_placas_api(df, placas):
 
@@ -16,6 +16,7 @@ def incluir_placas_api(df, placas):
     df.rename(columns={'Ano': 'Ano_Placa'}, inplace=True)
 
     return df
+
 
 def colunas_placas_ano(df):
 
@@ -36,6 +37,7 @@ def colunas_placas_ano(df):
                     df[novo_ano] = df[novo_ano].replace(0.0,'')
     return df
 
+
 def alterar_ano(df, placas):
     n_veiculos = df.filter(regex='^Veiculo ').columns.tolist()
     for i in range(1, len(n_veiculos) + 1):
@@ -51,6 +53,7 @@ def alterar_ano(df, placas):
         df.drop('Ano_Veiculo', axis=1, inplace=True)
 
     return df
+
 
 def contar_evasao(df):
 
@@ -77,6 +80,7 @@ def contar_evasao(df):
 
     return df
 
+
 def retirar_vazios (df):
     for i in range(len(df.filter(regex='^Veiculo ').columns.tolist())):
         df[f'Veiculo {i + 1}'] = df[f'Veiculo {i + 1}'].replace('',np.nan)
@@ -93,12 +97,12 @@ if(__name__ == "__main__"):
 
     df_acidentes = pd.read_csv('Arquivos/df_acidentes.csv', sep=',', encoding='UTF-8')
 
-    df_placa = Tratamento_Um_Veiculo.veiculo_por_linha(df_acidentes)
-    df_placa = Tratamento_Um_Veiculo.tratar_erros_ano(df_placa)
-    df_placa = Tratamento_Um_Veiculo.tratar_placa(df_placa)
-    df_placa = Tratamento_Um_Veiculo.incluir_placas_api(df_placa, placas)
+    df_placa = tratamento_um_veiculo.veiculo_por_linha(df_acidentes)
+    df_placa = tratamento_um_veiculo.tratar_erros_ano(df_placa)
+    df_placa = tratamento_um_veiculo.tratar_placa(df_placa)
+    df_placa = tratamento_um_veiculo.incluir_placas_api(df_placa, placas)
 
-    df_placa['Ano_Veiculo'] = df_placa.apply(lambda row: tratar_ano(row), axis=1)
+    df_placa['Ano_Veiculo'] = df_placa.apply(lambda row: alterar_ano(row), axis=1)
     df_placa = df_placa.drop(columns=['Ano_Placa', 'Ano_Acidente'], axis=1)
 
     df_placa.to_csv('Arquivos/df_placa.csv', sep=',', index=False, encoding='UTF-8')

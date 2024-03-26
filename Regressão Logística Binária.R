@@ -8,7 +8,10 @@ library(pacman)
 library(ggplot2)
 pacman::p_load(dplyr, psych, car, MASS, DescTools, QuantPsyc, ggplot2)
 
-dados <- read.csv('Arquivos/Cluster/resumo_vitimas_acidentes_volume_2_2018-2022.csv', stringsAsFactors = TRUE,fileEncoding = "UTF-8")
+dados <- read.csv('Arquivos/Cluster/df_vitimas_acidentes_2_2010-2022.csv', stringsAsFactors = TRUE,fileEncoding = "UTF-8")
+#dados<- subset(dados, Concessionaria == "Litoral Sul")
+
+str(dados)
 
 
 # Fatal = categoria de referencia
@@ -27,20 +30,22 @@ dados$TracadoPista <- relevel(dados$TracadoPista, ref = "Reta")
 dados$TipoLocal <- relevel(dados$TipoLocal, ref = "Rural")
 dados$Num_Veiculos <- relevel(dados$Num_Veiculos, ref = "Um")
 dados$Motocicleta <- relevel(dados$Motocicleta, ref = "True")
-dados$Veiculo.Leve <- relevel(dados$Veiculo.Leve, ref = "True")
-dados$Veiculo.Pesado <- relevel(dados$Veiculo.Pesado, ref = "True")
-dados$Veiculo.Passageiro <- relevel(dados$Veiculo.Passageiro, ref = "True")
+dados$Veiculo_Leve <- relevel(dados$Veiculo_Leve, ref = "True")
+dados$Veiculo_Pesado <- relevel(dados$Veiculo_Pesado, ref = "True")
+dados$Veiculo_Passageiro <- relevel(dados$Veiculo_Passageiro, ref = "True")
 dados$Cluster <- relevel(dados$Cluster, ref = "True")
 dados$Ano_2014 <- relevel(dados$Ano_2014, ref = "True")
 
 
 #dados$Estacao <- factor(dados$Estacao, levels = c("Inverno", "Primavera", "Outono"))
 
-#mod <- glm(Gravidade ~ PosicaoVitima + Sexo + Faixa_Etaria + CondicaoPista + PerfilPista + Estacao + Período + TipoAcidente + Volume_Total + TracadoPista + TipoLocal + Motocicleta + Veiculo.Leve + Veiculo.Pesado + Veiculo.Passageiro + Ano_2014 + Num_Veiculos + Cluster + TracadoPista*CondicaoPista,
+#mod <- glm(Gravidade ~ PosicaoVitima + Sexo + Faixa_Etaria + CondicaoPista + PerfilPista + Estacao + Período + TipoAcidente + TracadoPista + TipoLocal + Motocicleta + Veiculo_Leve + Veiculo_Pesado + Veiculo_Passageiro + Marginal + Ano_2014 + Volume_Log + Num_Veiculos + Cluster + TracadoPista*CondicaoPista,
 #          family = binomial(link = 'logit'), data = dados)
 
-mod <- glm(Gravidade ~ Sexo + Faixa_Etaria + CondicaoPista + PerfilPista + Período + TipoAcidente + Volume_Total + Veiculo.Leve + Veiculo.Pesado,
-          family = binomial(link = 'logit'), data = dados)
+mod <- glm(Gravidade ~ Sexo + Faixa_Etaria + CondicaoPista + PerfilPista + Estacao + Período + TipoAcidente + TracadoPista + TipoLocal + Motocicleta + Veiculo_Pesado + Veiculo_Passageiro + Volume_Log + Num_Veiculos + TracadoPista*CondicaoPista, 
+           family = binomial(link = 'logit'), data = dados)
+
+
 
 
 #Teste de White
@@ -79,9 +84,10 @@ exp(cbind(OR = coef(mod), confint.default(mod)))
 
 
 
-mod2 <- glm(Gravidade ~ Sexo + Faixa_Etaria + CondicaoPista + TracadoPista + PerfilPista + Estacao  + Período + TipoAcidente + Num_Veiculos,
+mod2 <- glm(Gravidade ~ Sexo + Faixa_Etaria + CondicaoPista + PerfilPista + Período + TipoAcidente + TracadoPista,
            family = binomial(link = 'logit'), data = dados)
 
+summary(stdres(mod2))
 #Teste de White
 bptest(mod2, ~fitted(mod)^2)
 
